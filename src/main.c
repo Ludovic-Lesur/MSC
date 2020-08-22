@@ -98,6 +98,7 @@ int main (void) {
 	GPIO_Init();
 	// Init clock.
 	RCC_Init();
+	RCC_EnableLsi();
 	RCC_SwitchToHsi();
 	// Init context.
 	msc_ctx.msc_state = MSC_STATE_INIT;
@@ -215,6 +216,7 @@ int main (void) {
 	// Init clock.
 	RCC_Init();
 	RCC_EnableGpio();
+	RCC_EnableLsi();
 	RCC_SwitchToHsi();
 	// Init peripherals.
 	LPTIM1_Init(0);
