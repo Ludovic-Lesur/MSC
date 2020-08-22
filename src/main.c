@@ -21,9 +21,11 @@
 #include "pwr.h"
 #include "rcc.h"
 #include "spi.h"
+#include "tim.h"
 #include "rtc.h"
 #include "usart.h"
 // Components.
+#include "led.h"
 #include "s2lp.h"
 #include "sigfox_types.h"
 #include "sigfox_api.h"
@@ -37,6 +39,8 @@
 
 #define MSC_SIGFOX_PERIOD_SECONDS				600
 #define MSC_SIGFOX_UPLINK_DATA_LENGTH_BYTES		10
+
+#define MSC_LED_BLINK_PERIOD_MS					1000
 
 /*** MAIN structures ***/
 
@@ -114,6 +118,8 @@ int main (void) {
 		// Init peripherals.
 		RCC_EnableGpio();
 		LPTIM1_Init(0);
+		TIM2_Init();
+		TIM21_Init(MSC_LED_BLINK_PERIOD_MS);
 		DMA1_InitChannel3();
 		ADC1_Init();
 		USART2_Init();
@@ -220,6 +226,8 @@ int main (void) {
 	RCC_SwitchToHsi();
 	// Init peripherals.
 	LPTIM1_Init(0);
+	TIM2_Init();
+	TIM21_Init(MSC_LED_BLINK_PERIOD_MS);
 	DMA1_InitChannel3();
 	ADC1_Init();
 	USART2_Init();

@@ -1,0 +1,6 @@
+r
+loadfile Release/BadgeCovidFirmware.hex
+verifyfile Release/BadgeCovidFirmware.hex
+r
+g
+qc
