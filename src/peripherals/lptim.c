@@ -38,22 +38,16 @@ void LPTIM1_IRQHandler(void) {
 /*** LPTIM functions ***/
 
 /* INIT LPTIM FOR DELAY OPERATION.
- * @param lptim1_use_lsi:	Use LSE as clock source if non 0, LSI otherwise.
- * @return:					None.
+ * @param:	None.
+ * @return:	None.
  */
-void LPTIM1_Init(unsigned char lptim1_use_lse) {
+void LPTIM1_Init(void) {
 	// Disable peripheral.
 	RCC -> APB1ENR &= ~(0b1 << 31); // LPTIM1EN='0'.
 	// Enable peripheral clock.
 	RCC -> CCIPR &= ~(0b11 << 18); // Reset bits 18-19.
-	if (lptim1_use_lse != 0) {
-		RCC -> CCIPR |= (0b11 << 18); // LPTIMSEL='11' (LSE clock selected).
-		lptim_clock_frequency_hz = (RCC_LSE_FREQUENCY_HZ >> 7);
-	}
-	else {
-		RCC -> CCIPR |= (0b01 << 18); // LPTIMSEL='01' (LSI clock selected).
-		lptim_clock_frequency_hz = (RCC_LSI_FREQUENCY_HZ >> 7);
-	}
+	RCC -> CCIPR |= (0b01 << 18); // LPTIMSEL='01' (LSI clock selected).
+	lptim_clock_frequency_hz = (RCC_LSI_FREQUENCY_HZ >> 7);
 	RCC -> APB1ENR |= (0b1 << 31); // LPTIM1EN='1'.
 	// Configure peripheral.
 	LPTIM1 -> CR &= ~(0b1 << 0); // Disable LPTIM1 (ENABLE='0'), needed to write CFGR.
@@ -105,7 +99,6 @@ void LPTIM1_DelayMilliseconds(unsigned int delay_ms) {
 	}
 	// Enable timer.
 	LPTIM1 -> CR |= (0b1 << 0); // Enable LPTIM1 (ENABLE='1').
-
 	// Compute ARR value.
 	LPTIM1 -> CNT &= 0xFFFF0000;
 	LPTIM1 -> ARR = ((local_delay_ms * lptim_clock_frequency_hz) / (1000));

@@ -21,13 +21,37 @@
 
 #define TIM21_BLINK_LUT_LENGTH_BYTES	(2 * TIM2_PWM_DUTY_CYCLE_RANGE)
 
+static const char tim21_blink_lut[TIM21_BLINK_LUT_LENGTH_BYTES] =  {0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 2, 2, 2, 2,
+		2, 2, 2, 2, 3, 3, 3, 3, 3, 3,
+		3, 4, 4, 4, 4, 5, 5, 5, 5, 6,
+		6, 6, 6, 7, 7, 7, 8, 8, 9, 9,
+		10, 10, 10, 11, 12, 12, 13, 13, 14, 15,
+		15, 16, 17, 18, 19, 19, 20, 21, 22, 24,
+		25, 26, 27, 28, 30, 31, 33, 34, 36, 38,
+		39, 41, 43, 45, 47, 50, 52, 55, 57, 60,
+		63, 66, 69, 72, 76, 79, 83, 87, 91, 95,
+		100,
+		100, 95, 91, 87, 83, 79, 76, 72, 69, 66,
+		63, 60, 57, 55, 52, 50, 47, 45, 43, 41,
+		39, 38, 36, 34, 33, 31, 30, 28, 27, 26,
+		25, 24, 22, 21, 20, 19, 19, 18, 17, 16,
+		15, 15, 14, 13, 13, 12, 12, 11, 10, 10,
+		10, 9, 9, 8, 8, 7, 7, 7, 6, 6,
+		6, 6, 5, 5, 5, 5, 4, 4, 4, 4,
+		3, 3, 3, 3, 3, 3, 3, 2, 2, 2,
+		2, 2, 2, 2, 2, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+		0};
+
 /*** TIM local structures ***/
 
 typedef struct {
 	unsigned int tim2_ccrx_duty_cycle[TIM2_PWM_DUTY_CYCLE_RANGE];
 	unsigned int tim21_channels_mask[TIM2_NUMBER_OF_CHANNELS];
-	unsigned int tim21_blink_lut[TIM21_BLINK_LUT_LENGTH_BYTES];
 	volatile unsigned int tim21_blink_lut_idx;
+	unsigned char tim21_single_blink;
+	volatile unsigned char tim21_single_blink_done;
 } TIM_Context;
 
 /*** TIM local global variables ***/
@@ -44,13 +68,18 @@ static TIM_Context tim_ctx;
 void TIM21_IRQHandler(void) {
 	if (((TIM21 -> SR) & (0b1 << 0)) != 0) {
 		// Update duty cycles.
-		TIM2_SetDutyCycle(TIM2_CHANNEL_LED_RED, tim_ctx.tim21_blink_lut[tim_ctx.tim21_blink_lut_idx] & tim_ctx.tim21_channels_mask[TIM2_CHANNEL_LED_RED]);
-		TIM2_SetDutyCycle(TIM2_CHANNEL_LED_GREEN, tim_ctx.tim21_blink_lut[tim_ctx.tim21_blink_lut_idx] & tim_ctx.tim21_channels_mask[TIM2_CHANNEL_LED_GREEN]);
-		TIM2_SetDutyCycle(TIM2_CHANNEL_LED_BLUE, tim_ctx.tim21_blink_lut[tim_ctx.tim21_blink_lut_idx] & tim_ctx.tim21_channels_mask[TIM2_CHANNEL_LED_BLUE]);
+		TIM2_SetDutyCycle(TIM2_CHANNEL_LED_RED, tim21_blink_lut[tim_ctx.tim21_blink_lut_idx] & tim_ctx.tim21_channels_mask[TIM2_CHANNEL_LED_RED]);
+		TIM2_SetDutyCycle(TIM2_CHANNEL_LED_GREEN, tim21_blink_lut[tim_ctx.tim21_blink_lut_idx] & tim_ctx.tim21_channels_mask[TIM2_CHANNEL_LED_GREEN]);
+		TIM2_SetDutyCycle(TIM2_CHANNEL_LED_BLUE, tim21_blink_lut[tim_ctx.tim21_blink_lut_idx] & tim_ctx.tim21_channels_mask[TIM2_CHANNEL_LED_BLUE]);
 		// Increment index.
 		tim_ctx.tim21_blink_lut_idx++;
 		if (tim_ctx.tim21_blink_lut_idx >= TIM21_BLINK_LUT_LENGTH_BYTES) {
 			tim_ctx.tim21_blink_lut_idx = 0;
+			if (tim_ctx.tim21_single_blink != 0) {
+				// Auto-stop and set flag.
+				TIM21_Stop();
+				tim_ctx.tim21_single_blink_done = 1;
+			}
 		}
 		// Clear flag.
 		TIM21 -> SR &= ~(0b1 << 0);
@@ -103,7 +132,7 @@ void TIM2_Start(void) {
 	TIM2 -> CR1 |= (0b1 << 0); // CEN='1'.
 }
 
-/* START PWM GENERATION.
+/* STOP PWM GENERATION.
  * @param:	None.
  * @return:	None.
  */
@@ -111,6 +140,15 @@ void TIM2_Stop(void) {
 	// Disable and reset counter.
 	TIM2 -> CR1 &= ~(0b1 << 0); // CEN='0'.
 	TIM2 -> CNT = 0;
+}
+
+/* DISABLE TIM2 PERIPHERAL.
+ * @param:	None.
+ * @return:	None.
+ */
+void TIM2_Disable(void) {
+	// Disable peripheral clock.
+	RCC -> APB1ENR &= ~(0b1 << 0); // TIM2EN='0'.
 }
 
 /* SET PWM DUTY CYCLE.
@@ -134,11 +172,8 @@ void TIM21_Init(unsigned int led_blink_period_ms) {
 	TIM21 -> CR1 &= ~(0b1 << 0); // Disable TIM21 (CEN='0').
 	TIM21 -> CNT &= 0xFFFF0000; // Reset counter.
 	TIM21 -> SR &= 0xFFFFF9B8; // Clear all flags.
-	// Build blink LUT.
-	unsigned int idx = 0;
-	for (idx=0 ; idx<TIM21_BLINK_LUT_LENGTH_BYTES ; idx++) {
-		tim_ctx.tim21_blink_lut[idx] = (idx < TIM2_PWM_DUTY_CYCLE_RANGE) ? idx : (TIM2_PWM_DUTY_CYCLE_RANGE - 1) - (idx - TIM2_PWM_DUTY_CYCLE_RANGE);
-	}
+	// Reset index and masks.
+	unsigned char idx = 0;
 	tim_ctx.tim21_blink_lut_idx = 0;
 	for (idx=0 ; idx<TIM2_NUMBER_OF_CHANNELS ; idx++) {
 		tim_ctx.tim21_channels_mask[idx] = 0;
@@ -168,8 +203,10 @@ void TIM21_SetLedColor(TIM2_LedColor led_color) {
  * @param:	None.
  * @return:	None.
  */
-void TIM21_Start(void) {
-	// Reset LUT index.
+void TIM21_Start(unsigned char single_blink) {
+	// Set mode and reset LUT index.
+	tim_ctx.tim21_single_blink = single_blink;
+	tim_ctx.tim21_single_blink_done = 0;
 	tim_ctx.tim21_blink_lut_idx = 0;
 	// Clear flag and enable interrupt.
 	TIM21 -> SR &= ~(0b1 << 0); // Clear flag (UIF='0').
@@ -189,3 +226,19 @@ void TIM21_Stop(void) {
 	TIM21 -> CR1 &= ~(0b1 << 0); // CEN='0'.
 }
 
+/* GET SINGLE BLINK STATUS.
+ * @param:							None.
+ * @return tim21_single_blink_done: '1' if the single blink is finished, '0' otherwise.
+ */
+unsigned char TIM21_IsSingleBlinkDone(void) {
+	return (tim_ctx.tim21_single_blink_done);
+}
+
+/* DISABLE TIM21 PERIPHERAL.
+ * @param:	None.
+ * @return:	None.
+ */
+void TIM21_Disable(void) {
+	// Disable peripheral clock.
+	RCC -> APB2ENR &= ~(0b1 << 2); // TIM21EN='0'.
+}

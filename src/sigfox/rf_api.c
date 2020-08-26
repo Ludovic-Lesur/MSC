@@ -76,7 +76,9 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	// Init required peripherals.
 	DMA1_InitChannel3();
 	SPI1_Init();
+	S2LP_Init();
 	// Turn TCXO and transceiver on.
+	RCC_EnableGpio();
 	RCC_Tcxo(1);
 	SPI1_PowerOn();
 	// TX/RX common init.
@@ -124,6 +126,8 @@ sfx_u8 RF_API_stop(void) {
 	// Turn transceiver and TCXO off.
 	SPI1_PowerOff();
 	RCC_Tcxo(0);
+	RCC_DisableGpio();
+	S2LP_DisableGpio();
 	// Turn peripherals off.
 	DMA1_Disable();
 	SPI1_Disable();
@@ -237,6 +241,7 @@ sfx_u8 RF_API_start_continuous_transmission (sfx_modulation_type_t type) {
 	S2LP_SendCommand(S2LP_CMD_READY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
 	S2LP_SendCommand(S2LP_CMD_TX);
+	S2LP_WaitForStateSwitch(S2LP_STATE_TX);
 	// Return.
 	return SFX_ERR_NONE;
 }

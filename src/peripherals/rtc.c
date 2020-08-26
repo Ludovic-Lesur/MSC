@@ -93,19 +93,12 @@ void RTC_Reset(void) {
 }
 
 /* INIT HARDWARE RTC PERIPHERAL.
- * @param rtc_use_lse:	RTC will be clocked on LSI if 0, on LSE otherwise.
- * @return:				None.
+ * @param:	None.
+ * @return:	None.
  */
-void RTC_Init(unsigned char* rtc_use_lse) {
-	// Manage RTC clock source.
-	if ((*rtc_use_lse) != 0) {
-		// Use LSE.
-		RCC -> CSR |= (0b01 << 16); // RTCSEL='01'.
-	}
-	else {
-		// Use LSI.
-		RCC -> CSR |= (0b10 << 16); // RTCSEL='10'.
-	}
+void RTC_Init(void) {
+	// Use LSI.
+	RCC -> CSR |= (0b10 << 16); // RTCSEL='10'.
 	// Enable RTC and register access.
 	RCC -> CSR |= (0b1 << 18); // RTCEN='1'.
 	// Switch to LSI if RTC failed to enter initialization mode.
@@ -114,18 +107,9 @@ void RTC_Init(unsigned char* rtc_use_lse) {
 		RCC -> CSR |= (0b10 << 16); // RTCSEL='10'.
 		RCC -> CSR |= (0b1 << 18); // RTCEN='1'.
 		RTC_EnterInitializationMode();
-		// Update flag.
-		(*rtc_use_lse) = 0;
 	}
-	// Configure prescaler.
-	if ((*rtc_use_lse) != 0) {
-		// LSE frequency is 32.768kHz typical.
-		RTC -> PRER = (127 << 16) | (255 << 0); // PREDIV_A=127 and PREDIV_S=255 (128*256 = 32768).
-	}
-	else {
-		// Compute prescaler according to measured LSI frequency.
-		RTC -> PRER = (127 << 16) | (296 << 0); // PREDIV_A=127 and PREDIV_S=296 (128*295 = 38000).
-	}
+	// Compute prescaler according to typical LSI frequency.
+	RTC -> PRER = (127 << 16) | (296 << 0); // PREDIV_A=127 and PREDIV_S=296 (128*295 = 38000).
 	// Bypass shadow registers.
 	RTC -> CR |= (0b1 << 5); // BYPSHAD='1'.
 	// Configure wake-up timer.
@@ -139,19 +123,22 @@ void RTC_Init(unsigned char* rtc_use_lse) {
 }
 
 void RTC_StartWakeUpTimer(unsigned char delay_seconds) {
-	// Enable RTC and register access.
-	RTC_EnterInitializationMode();
-	// Configure wake-up timer.
-	RTC -> CR &= ~(0b1 << 10); // Disable wake-up timer.
-	RTC -> WUTR = (delay_seconds - 1);
-	// Clear flags.
-	RTC -> ISR &= ~(0b1 << 10); // WUTF='0'.
-	EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);
-	// Start timer.
-	RTC -> CR |= (0b1 << 10); // Enable wake-up timer.
-	RTC_ExitInitializationMode();
-	// Enable interrupt.
-	NVIC_EnableInterrupt(IT_RTC);
+	// Check if timer si not allready running.
+	if (((RTC -> CR) & (0b1 << 10)) == 0) {
+		// Enable RTC and register access.
+		RTC_EnterInitializationMode();
+		// Configure wake-up timer.
+		RTC -> CR &= ~(0b1 << 10); // Disable wake-up timer.
+		RTC -> WUTR = (delay_seconds - 1);
+		// Clear flags.
+		RTC -> ISR &= ~(0b1 << 10); // WUTF='0'.
+		EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);
+		// Start timer.
+		RTC -> CR |= (0b1 << 10); // Enable wake-up timer.
+		RTC_ExitInitializationMode();
+		// Enable interrupt.
+		NVIC_EnableInterrupt(IT_RTC);
+	}
 }
 
 void RTC_StopWakeUpTimer(void) {

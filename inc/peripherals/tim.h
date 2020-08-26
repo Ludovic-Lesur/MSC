@@ -35,10 +35,13 @@ void TIM2_Init(void);
 void TIM2_Start(void);
 void TIM2_Stop(void);
 void TIM2_SetDutyCycle(TIM2_Channel channel, unsigned int duty_cycle);
+void TIM2_Disable(void);
 
 void TIM21_Init(unsigned int led_blink_period_ms);
 void TIM21_SetLedColor(TIM2_LedColor led_color);
-void TIM21_Start(void);
+void TIM21_Start(unsigned char single_blink);
 void TIM21_Stop(void);
+unsigned char TIM21_IsSingleBlinkDone(void);
+void TIM21_Disable(void);
 
 #endif /* TIM_H */
