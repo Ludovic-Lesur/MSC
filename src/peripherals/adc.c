@@ -21,6 +21,7 @@
 #define ADC_CHANNEL_OUTPUT_CURRENT			5
 #define ADC_CHANNEL_LM4040					6
 #define ADC_CHANNEL_SOLAR_VOLTAGE			7
+#define ADC_CHANNEL_TEMPERATURE_SENSOR		18
 
 #define ADC_FULL_SCALE_12BITS				4095
 
@@ -125,23 +126,14 @@ void ADC1_ComputeMcuVoltage(void) {
  * @return:	None.
  */
 void ADC1_ComputeMcuTemperature(void) {
-	// Select ADC_IN18 input channel.
-	ADC1 -> CHSELR &= 0xFFF80000; // Reset all bits.
-	ADC1 -> CHSELR |= (0b1 << 18);
 	// Set sampling time (see p.89 of STM32L031x4/6 datasheet).
 	ADC1 -> SMPR |= (0b111 << 0); // Sampling time for temperature sensor must be greater than 10us, 160.5*(1/ADCCLK) = 20us for ADCCLK = SYSCLK/2 = 8MHz;
-	// Wake-up temperature sensor3
+	// Wake-up temperature sensor.
 	ADC1 -> CCR |= (0b1 << 23); // TSEN='1'.
 	LPTIM1_DelayMilliseconds(1); // Wait at least 10µs (see p.89 of STM32L031x4/6 datasheet).
 	// Read raw temperature.
-	ADC1 -> CR |= (0b1 << 2); // ADSTART='1'.
-	unsigned int loop_count = 0;
-	while (((ADC1 -> ISR) & (0b1 << 2)) == 0) {
-		// Wait end of conversion ('EOC='1') or timeout.
-		loop_count++;
-		if (loop_count > ADC_TIMEOUT_COUNT) return;
-	}
-	int raw_temp_sensor_12bits = (ADC1 -> DR);
+	int raw_temp_sensor_12bits = 0;
+	ADC1_SingleConversion(ADC_CHANNEL_TEMPERATURE_SENSOR, &raw_temp_sensor_12bits);
 	// Compute temperature according to MCU factory calibration (see p.301 and p.847 of RM0377 datasheet).
 	int raw_temp_calib_mv = (raw_temp_sensor_12bits * adc_ctx.adc_mcu_voltage_mv) / (TS_VCC_CALIB_MV) - TS_CAL1; // Equivalent raw measure for calibration power supply (VCC_CALIB).
 	int temp_calib_degrees = raw_temp_calib_mv * ((int)(TS_CAL2_TEMP-TS_CAL1_TEMP));
@@ -230,6 +222,7 @@ void ADC1_PerformMeasurements(void) {
 	ADC1_SingleConversion(ADC_CHANNEL_LM4040, &adc_ctx.adc_lm4040_voltage_12bits);
 	ADC1_ComputeSolarVoltage();
 	ADC1_ComputeOutputVoltage();
+	ADC1_ComputeOutputCurrent();
 	ADC1_ComputeMcuVoltage();
 	ADC1_ComputeMcuTemperature();
 	// Clear all flags.
@@ -277,5 +270,5 @@ void ADC1_GetMcuVoltage(unsigned int* mcu_voltage_mv) {
  * @return:							None.
  */
 void ADC1_GetMcuTemperature(signed char* mcu_temperature_degrees) {
-	(*mcu_temperature_degrees) = adc_ctx.adc_mcu_voltage_mv;
+	(*mcu_temperature_degrees) = adc_ctx.adc_mcu_temperature_degrees;
 }

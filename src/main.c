@@ -48,6 +48,7 @@
 
 /*** MAIN structures ***/
 
+#ifdef NM
 // State machine.
 typedef enum {
 	MSC_STATE_MEASURE,
@@ -83,10 +84,13 @@ typedef struct {
 	MSC_SigfoxUplinkData msc_sigfox_uplink_data;
 	unsigned char msc_sigfox_downlink_data[SFX_DOWNLINK_DATA_SIZE_BYTES];
 } MSC_Context;
+#endif
 
 /*** MAIN global variables ***/
 
+#ifdef NM
 static MSC_Context msc_ctx;
+#endif
 
 /*** MAIN functions ***/
 
@@ -200,7 +204,7 @@ int main (void) {
 			}
 			// Start blink.
 			TIM2_Start();
-			TIM21_Start(0);
+			TIM21_Start(1);
 			// Wait the end of blink.
 			while (TIM21_IsSingleBlinkDone() == 0) {
 				PWR_EnterLowPowerSleepMode();
@@ -260,30 +264,16 @@ int main (void) {
 	EXTI_Init();
 	// Init clock.
 	RCC_Init();
-	RCC_EnableGpio();
 	RCC_EnableLsi();
 	RCC_SwitchToHsi();
 	// Init peripherals.
-	LPTIM1_Init(0);
-	TIM2_Init();
-	TIM21_Init(MSC_LED_BLINK_PERIOD_MS);
-	DMA1_InitChannel3();
+	LPTIM1_Init();
 	ADC1_Init();
 	USART2_Init();
-	SPI1_Init();
-	AES_Init();
-	// Components.
-	S2LP_Init();
-
-	// CW test.
-	//SIGFOX_API_start_continuous_transmission(868130000, SFX_NO_MODULATION);
-	//while (1);
-
 	// Applicative layers.
 	AT_Init();
 	// Main loop.
 	while (1) {
-		PWR_EnterLowPowerSleepMode();
 		AT_Task();
 	}
 	return 0;

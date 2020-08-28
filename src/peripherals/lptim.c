@@ -16,13 +16,14 @@
 
 /*** LPTIM local macros ***/
 
-#define LPTIM_TIMEOUT_COUNT		1000
+#define LPTIM_TIMEOUT_COUNT		1000000
 #define LPTIM_DELAY_MS_MIN		4
 #define LPTIM_DELAY_MS_MAX		255000
 
 /*** LPTIM local global variables ***/
 
 static unsigned int lptim_clock_frequency_hz = 0;
+static volatile unsigned char lptim_wake_up = 0;
 
 /*** LPTIM local functions ***/
 
@@ -31,8 +32,38 @@ static unsigned int lptim_clock_frequency_hz = 0;
  * @return:	None.
  */
 void LPTIM1_IRQHandler(void) {
-	// Clear all flags.
-	LPTIM1 -> ICR |= (0b1111111 << 0);
+	// Check flag.
+	if (((LPTIM1 -> ISR) & (0b1 << 1)) != 0) {
+		// Set wake-up flag.
+		lptim_wake_up = 1;
+		// Clear all flags.
+		LPTIM1 -> ICR |= (0b1 << 1);
+	}
+}
+
+/* WRITE ARR REGISTER.
+ * @param arr_value:	ARR register value to write.
+ * @return:				None.
+ */
+void LPTIM1_WriteArr(unsigned int arr_value) {
+	unsigned int loop_count = 0;
+	// Reset bits.
+	LPTIM1 -> ICR |= (0b1 << 4);
+	LPTIM1 -> ARR &= 0xFFFF0000;
+	while (((LPTIM1 -> ISR) & (0b1 << 4)) == 0) {
+		// Wait for ARROK='1' or timeout.
+		loop_count++;
+		if (loop_count > LPTIM_TIMEOUT_COUNT) break;
+	}
+	// Write new value.
+	LPTIM1 -> ICR |= (0b1 << 4);
+	LPTIM1 -> ARR |= arr_value;
+	loop_count = 0;
+	while (((LPTIM1 -> ISR) & (0b1 << 4)) == 0) {
+		// Wait for ARROK='1' or timeout.
+		loop_count++;
+		if (loop_count > LPTIM_TIMEOUT_COUNT) break;
+	}
 }
 
 /*** LPTIM functions ***/
@@ -99,20 +130,19 @@ void LPTIM1_DelayMilliseconds(unsigned int delay_ms) {
 	}
 	// Enable timer.
 	LPTIM1 -> CR |= (0b1 << 0); // Enable LPTIM1 (ENABLE='1').
-	// Compute ARR value.
+	// Reset counter.
 	LPTIM1 -> CNT &= 0xFFFF0000;
-	LPTIM1 -> ARR = ((local_delay_ms * lptim_clock_frequency_hz) / (1000));
-	unsigned int loop_count = 0;
-	while (((LPTIM1 -> ISR) & (0b1 << 4)) == 0) {
-		// Wait for ARROK='1' or timeout.
-		loop_count++;
-		if (loop_count > LPTIM_TIMEOUT_COUNT) break;
-	}
+	// Compute ARR value.
+	unsigned int arr = ((local_delay_ms * lptim_clock_frequency_hz) / (1000)) & 0x0000FFFF;
+	LPTIM1_WriteArr(arr);
 	// Start timer.
 	NVIC_EnableInterrupt(IT_LPTIM1);
+	lptim_wake_up = 0;
 	LPTIM1 -> CR |= (0b1 << 1); // SNGSTRT='1'.
 	// Enter stop mode.
-	PWR_EnterStopMode();
+	while (lptim_wake_up == 0) {
+		PWR_EnterStopMode();
+	}
 	// Disable timer.
 	LPTIM1 -> CR &= ~(0b1 << 0); // Disable LPTIM1 (ENABLE='0').
 	NVIC_DisableInterrupt(IT_LPTIM1);

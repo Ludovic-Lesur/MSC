@@ -11,19 +11,18 @@
 #include "exti.h"
 #include "gpio.h"
 #include "iwdg.h"
+#include "led.h"
 #include "mapping.h"
 #include "mode.h"
 #include "nvic.h"
 #include "pwr.h"
 #include "rcc.h"
 #include "s2lp.h"
+#include "s2lp_reg.h"
 #include "sigfox_api.h"
 #include "sigfox_types.h"
 #include "spi.h"
 #include "usart.h"
-
-#include "exti_reg.h"
-#include "s2lp_reg.h"
 
 /*** RF API local macros ***/
 
@@ -77,9 +76,9 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	DMA1_InitChannel3();
 	SPI1_Init();
 	S2LP_Init();
-	// Turn TCXO and transceiver on.
-	RCC_EnableGpio();
-	RCC_Tcxo(1);
+	// Turn LED on.
+	LED_SetColor(LED_COLOR_BLUE);
+	// Turn transceiver on.
 	SPI1_PowerOn();
 	// TX/RX common init.
 	S2LP_SendCommand(S2LP_CMD_STANDBY);
@@ -131,6 +130,8 @@ sfx_u8 RF_API_stop(void) {
 	// Turn peripherals off.
 	DMA1_Disable();
 	SPI1_Disable();
+	// Turn LED off.
+	LED_SetColor(LED_OFF);
 	return SFX_ERR_NONE;
 }
 
@@ -157,6 +158,9 @@ sfx_u8 RF_API_send(sfx_u8 *stream, sfx_modulation_type_t type, sfx_u8 size) {
 	unsigned char stream_bit_idx = 0;
 	unsigned char s2lp_fifo_sample_idx = 0;
 	unsigned char s2lp_fdev = RF_API_S2LP_FDEV_NEGATIVE; // Effective deviation.
+	// Turn TCXO on.
+	RCC_EnableGpio();
+	RCC_Tcxo(1);
 	// Go to ready state.
 	S2LP_SendCommand(S2LP_CMD_READY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
@@ -237,6 +241,9 @@ sfx_u8 RF_API_send(sfx_u8 *stream, sfx_modulation_type_t type, sfx_u8 size) {
 sfx_u8 RF_API_start_continuous_transmission (sfx_modulation_type_t type) {
 	// Disable modulation.
 	S2LP_SetModulation(S2LP_MODULATION_NONE);
+	// Turn TCXO on.
+	RCC_EnableGpio();
+	RCC_Tcxo(1);
 	// Start radio.
 	S2LP_SendCommand(S2LP_CMD_READY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
