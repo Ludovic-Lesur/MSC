@@ -8,6 +8,7 @@
 #include "adc.h"
 
 #include "adc_reg.h"
+#include "filter.h"
 #include "gpio.h"
 #include "lptim.h"
 #include "mapping.h"
@@ -22,6 +23,9 @@
 #define ADC_CHANNEL_LM4040					6
 #define ADC_CHANNEL_SOLAR_VOLTAGE			7
 #define ADC_CHANNEL_TEMPERATURE_SENSOR		18
+
+#define ADC_MEDIAN_FILTER_LENGTH			9
+#define ADC_CENTER_AVERGAE_LENGTH			3
 
 #define ADC_FULL_SCALE_12BITS				4095
 
@@ -70,6 +74,22 @@ void ADC1_SingleConversion(unsigned char adc_channel, unsigned int* adc_result_1
 	(*adc_result_12bits) = (ADC1 -> DR);
 }
 
+/* PERFORM SEVERAL CONVERSIONS FOLLOWED BY A MEDIAN FIILTER.
+ * @param adc_channel:			Channel to convert.
+ * @param adc_result_12bits:	Pointer to int that will contain ADC filtered result on 12 bits.
+ * @return:						None.
+ */
+void ADC1_FilteredConversion(unsigned char adc_channel, unsigned int* adc_result_12bits) {
+	// Perform all conversions.
+	unsigned int adc_sample_buf[ADC_MEDIAN_FILTER_LENGTH] = {0x00};
+	unsigned char idx = 0;
+	for (idx=0 ; idx<ADC_MEDIAN_FILTER_LENGTH ; idx++) {
+		ADC1_SingleConversion(adc_channel, &(adc_sample_buf[idx]));
+	}
+	// Apply median filter.
+	(*adc_result_12bits) = FILTER_ComputeMedianFilter(adc_sample_buf, ADC_MEDIAN_FILTER_LENGTH, ADC_CENTER_AVERGAE_LENGTH);
+}
+
 /* COMPUTE SOLAR VOLTAGE.
  * @param:	None.
  * @return:	None.
@@ -77,7 +97,7 @@ void ADC1_SingleConversion(unsigned char adc_channel, unsigned int* adc_result_1
 void ADC1_ComputeSolarVoltage(void) {
 	// Get raw result.
 	unsigned int solar_voltage_12bits = 0;
-	ADC1_SingleConversion(ADC_CHANNEL_SOLAR_VOLTAGE, &solar_voltage_12bits);
+	ADC1_FilteredConversion(ADC_CHANNEL_SOLAR_VOLTAGE, &solar_voltage_12bits);
 	// Convert to mV using bandgap result.
 	adc_ctx.adc_solar_voltage_mv = (ADC_LM4040_VOLTAGE_MV * solar_voltage_12bits * ADC_SOLAR_VOLTAGE_DIVIDER_RATIO) / (adc_ctx.adc_lm4040_voltage_12bits);
 }
@@ -89,7 +109,7 @@ void ADC1_ComputeSolarVoltage(void) {
 void ADC1_ComputeOutputVoltage(void) {
 	// Get raw result.
 	unsigned int output_voltage_12bits = 0;
-	ADC1_SingleConversion(ADC_CHANNEL_OUTPUT_VOLTAGE, &output_voltage_12bits);
+	ADC1_FilteredConversion(ADC_CHANNEL_OUTPUT_VOLTAGE, &output_voltage_12bits);
 	// Convert to mV using bandgap result.
 	adc_ctx.adc_output_voltage_mv = (ADC_LM4040_VOLTAGE_MV * output_voltage_12bits * ADC_OUTPUT_VOLTAGE_DIVIDER_RATIO) / (adc_ctx.adc_lm4040_voltage_12bits);
 }
@@ -101,7 +121,7 @@ void ADC1_ComputeOutputVoltage(void) {
 void ADC1_ComputeOutputCurrent(void) {
 	// Get raw result.
 	unsigned int output_current_12bits = 0;
-	ADC1_SingleConversion(ADC_CHANNEL_OUTPUT_CURRENT, &output_current_12bits);
+	ADC1_FilteredConversion(ADC_CHANNEL_OUTPUT_CURRENT, &output_current_12bits);
 	// Convert to uA using bandgap result.
 	unsigned long long num = output_current_12bits;
 	num *= ADC_LM4040_VOLTAGE_MV;
@@ -133,7 +153,7 @@ void ADC1_ComputeMcuTemperature(void) {
 	LPTIM1_DelayMilliseconds(1); // Wait at least 10µs (see p.89 of STM32L031x4/6 datasheet).
 	// Read raw temperature.
 	int raw_temp_sensor_12bits = 0;
-	ADC1_SingleConversion(ADC_CHANNEL_TEMPERATURE_SENSOR, &raw_temp_sensor_12bits);
+	ADC1_FilteredConversion(ADC_CHANNEL_TEMPERATURE_SENSOR, &raw_temp_sensor_12bits);
 	// Compute temperature according to MCU factory calibration (see p.301 and p.847 of RM0377 datasheet).
 	int raw_temp_calib_mv = (raw_temp_sensor_12bits * adc_ctx.adc_mcu_voltage_mv) / (TS_VCC_CALIB_MV) - TS_CAL1; // Equivalent raw measure for calibration power supply (VCC_CALIB).
 	int temp_calib_degrees = raw_temp_calib_mv * ((int)(TS_CAL2_TEMP-TS_CAL1_TEMP));
@@ -219,7 +239,7 @@ void ADC1_PerformMeasurements(void) {
 		if (loop_count > ADC_TIMEOUT_COUNT) return;
 	}
 	// Perform measurements.
-	ADC1_SingleConversion(ADC_CHANNEL_LM4040, &adc_ctx.adc_lm4040_voltage_12bits);
+	ADC1_FilteredConversion(ADC_CHANNEL_LM4040, &adc_ctx.adc_lm4040_voltage_12bits);
 	ADC1_ComputeSolarVoltage();
 	ADC1_ComputeOutputVoltage();
 	ADC1_ComputeOutputCurrent();
