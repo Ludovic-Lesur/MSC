@@ -18,32 +18,7 @@
 
 /*** RCC local macros ***/
 
-#define RCC_MSI_RESET_FREQUENCY_KHZ		2100
-#define RCC_MSI_FREQUENCY_KHZ			65
-#define RCC_TCXO_FREQUENCY_KHZ			26000
-#define RCC_TIMEOUT_COUNT				10
-
-/*** RCC local global variables ***/
-
-static unsigned int rcc_sysclk_khz;
-
-/*** RCC local functions ***/
-
-/* PERFORM A MANUAL DELAY.
- * @param:	None.
- * @return:	None.
- */
-void RCC_Delay(void) {
-	unsigned int j = 0;
-	unsigned int loop_count = (19 * rcc_sysclk_khz) / 3; // Value for 100ms.
-	for (j=0 ; j<loop_count ; j++) {
-		// Poll a bit always read as '0'.
-		// This is required to avoid for loop removal by compiler (size optimization for HW1.0).
-		if (((RCC -> CR) & (0b1 << 24)) != 0) {
-			break;
-		}
-	}
-}
+#define RCC_TIMEOUT_COUNT	1000000
 
 /*** RCC functions ***/
 
@@ -61,8 +36,6 @@ void RCC_Init(void) {
 	// Unlock back-up registers.
 	RCC -> APB1ENR |= (0b1 << 28); // PWREN='1'.
 	PWR -> CR |= (0b1 << 8); // Set DBP bit to unlock back-up registers write protection.
-	// Reset clock is MSI 2.1MHz.
-	rcc_sysclk_khz = RCC_MSI_RESET_FREQUENCY_KHZ;
 }
 
 /* CONTROL EXTERNAL TCXO.
@@ -73,7 +46,6 @@ void RCC_Tcxo(unsigned char tcxo_enable) {
 	// Turn TCXO on or off.
 	if (tcxo_enable != 0) {
 		GPIO_Write(&GPIO_TCXO_POWER_ENABLE, 1);
-		RCC_Delay();
 	}
 	else {
 		GPIO_Write(&GPIO_TCXO_POWER_ENABLE, 0);
@@ -99,14 +71,6 @@ void RCC_DisableGpio(void) {
 	GPIO_Configure(&GPIO_TCXO_POWER_ENABLE, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 }
 
-/* RETURN THE CURRENT SYSTEM CLOCK FREQUENCY.
- * @param:					None.
- * @return rcc_sysclk_khz:	Current system clock frequency in kHz.
- */
-unsigned int RCC_GetSysclkKhz(void) {
-	return rcc_sysclk_khz;
-}
-
 /* CONFIGURE AND USE HSI AS SYSTEM CLOCK (16MHz INTERNAL RC).
  * @param:					None.
  * @return sysclk_on_hsi:	'1' if SYSCLK source was successfully switched to HSI, 0 otherwise.
@@ -120,7 +84,6 @@ unsigned char RCC_SwitchToHsi(void) {
 	unsigned char sysclk_on_hsi = 0;
 	unsigned int count = 0;
 	while ((((RCC -> CR) & (0b1 << 2)) == 0) && (count < RCC_TIMEOUT_COUNT)) {
-		RCC_Delay();
 		count++; // Wait for HSIRDYF='1' or timeout.
 	}
 	// Check timeout.
@@ -131,7 +94,6 @@ unsigned char RCC_SwitchToHsi(void) {
 		// Wait for clock switch.
 		count = 0;
 		while ((((RCC -> CFGR) & (0b11 << 2)) != (0b01 << 2)) && (count < RCC_TIMEOUT_COUNT)) {
-			RCC_Delay();
 			count++; // Wait for SWS='01' or timeout.
 		}
 		// Check timeout.
@@ -141,95 +103,9 @@ unsigned char RCC_SwitchToHsi(void) {
 			RCC -> CR &= ~(0b1 << 16); // Disable HSE (HSEON='0').
 			// Update flag and frequency.
 			sysclk_on_hsi = 1;
-			rcc_sysclk_khz = RCC_HSI_FREQUENCY_KHZ;
 		}
 	}
 	return sysclk_on_hsi;
-}
-
-/* CONFIGURE AND USE MSI AS SYSTEM CLOCK.
- * @param:					None.
- * @return sysclk_on_hsi:	'1' if SYSCLK source was successfully switched to MSI, 0 otherwise.
- */
-unsigned char RCC_SwitchToMsi(void) {
-	// Init MSI.
-	RCC -> ICSCR &= ~(0b111 << 13); // Set frequency to 65kHz (MSIRANGE='000').
-	RCC -> CR |= (0b1 << 8); // Enable MSI (MSION='1').
-	// Wait for HSI to be stable.
-	unsigned char sysclk_on_msi = 0;
-	unsigned int count = 0;
-	while ((((RCC -> CR) & (0b1 << 9)) == 0) && (count < RCC_TIMEOUT_COUNT)) {
-		RCC_Delay();
-		count++; // Wait for HSIRDYF='1' or timeout.
-	}
-	// Check timeout.
-	if (count < RCC_TIMEOUT_COUNT) {
-		// Switch SYSCLK.
-		RCC -> CFGR &= ~(0b11 << 0); // Use MSI as system clock (SW='00').
-		// Wait for clock switch.
-		count = 0;
-		while ((((RCC -> CFGR) & (0b11 << 2)) != (0b00 << 2)) && (count < RCC_TIMEOUT_COUNT)) {
-			RCC_Delay();
-			count++; // Wait for SWS='00' or timeout.
-		}
-		// Check timeout.
-		if (count < RCC_TIMEOUT_COUNT) {
-			// Set flash latency.
-			FLASH_SetLatency(0);
-			// Disable HSI and HSE.
-			RCC -> CR &= ~(0b1 << 0); // Disable HSI (HSI16ON='0').
-			RCC -> CR &= ~(0b1 << 16); // Disable HSE (HSEON='0').
-			// Update flag and frequency.
-			sysclk_on_msi = 1;
-			rcc_sysclk_khz = RCC_MSI_FREQUENCY_KHZ;
-		}
-	}
-	return sysclk_on_msi;
-}
-
-/* CONFIGURE AND USE HSE AS SYSTEM CLOCK (16MHz TCXO).
- * @param:					None.
- * @return sysclk_on_hse:	'1' if SYSCLK source was successfully switched to HSE (TCXO), 0 otherwise.
- */
-unsigned char RCC_SwitchToHse(void) {
-	// Set flash latency.
-	FLASH_SetLatency(1);
-	// Init HSE.
-	RCC -> CR |= (0b1 << 18); // Bypass oscillator (HSEBYP='1').
-	RCC -> CR |= (0b1 << 16); // Enable HSE (HSEON='1').
-	// Wait for HSE to be stable.
-	unsigned char sysclk_on_hse = 0;
-	unsigned int count = 0;
-	while ((((RCC -> CR) & (0b1 << 17)) == 0) && (count < RCC_TIMEOUT_COUNT)) {
-		RCC_Delay();
-		count++; // Wait for HSERDY='1' or timeout.
-	}
-	// Check timeout.
-	if (count < RCC_TIMEOUT_COUNT) {
-		// Switch SYSCLK.
-		RCC -> CFGR &= ~(0b11 << 0); // Reset bits 0-1.
-		RCC -> CFGR |= (0b10 << 0); // Use HSE as system clock (SW='10').
-		// Wait for clock switch.
-		count = 0;
-		while ((((RCC -> CFGR) & (0b11 << 2)) != (0b10 << 2)) && (count < RCC_TIMEOUT_COUNT)) {
-			RCC_Delay();
-			count++; // Wait for SWS='10' or timeout.
-		}
-		// Check timeout.
-		if (count < RCC_TIMEOUT_COUNT) {
-			// Disable MSI and HSI */
-			RCC -> CR &= ~(0b1 << 8); // Disable MSI (MSION='0').
-			RCC -> CR &= ~(0b1 << 0); // Disable HSI (HSI16ON='0').
-			// Update flag and frequency.
-			sysclk_on_hse = 1;
-			rcc_sysclk_khz = RCC_TCXO_FREQUENCY_KHZ;
-		}
-	}
-	// Turn HSE off if any failure occurred.
-	if (sysclk_on_hse == 0) {
-		RCC -> CR &= ~(0b1 << 16); // Disable HSE (HSEON='0').
-	}
-	return sysclk_on_hse;
 }
 
 /* CONFIGURE AND USE LSI AS LOW SPEED OSCILLATOR (32kHz INTERNAL RC).
@@ -243,7 +119,6 @@ unsigned char RCC_EnableLsi(void) {
 	unsigned char lsi_available = 0;
 	unsigned int count = 0;
 	while ((((RCC -> CSR) & (0b1 << 1)) == 0) && (count < RCC_TIMEOUT_COUNT)) {
-		RCC_Delay();
 		count++; // Wait for LSIRDY='1'.
 	}
 	// Check timeout.
@@ -252,32 +127,4 @@ unsigned char RCC_EnableLsi(void) {
 		lsi_available = 1;
 	}
 	return lsi_available;
-}
-
-/* ENABLE LSE OSCILLATOR (32kHz EXTERNAL QUARTZ).
- * @param:					None.
- * @return lse_available:	'1' if LSE was successfully started, 0 otherwise.
- */
-unsigned char RCC_EnableLse(void) {
-	// Configure drive level.
-	//RCC -> CSR |= (0b11 << 11);
-	// Enable LSE (32.768kHz crystal).
-	RCC -> CSR |= (0b1 << 8); // LSEON='1'.
-	// Wait for LSE to be stable.
-	unsigned char lse_available = 0;
-	unsigned int count = 0;
-	while ((((RCC -> CSR) & (0b1 << 9)) == 0) && (count < RCC_TIMEOUT_COUNT)) {
-		RCC_Delay();
-		count++; // Wait for LSERDY='1'.
-	}
-	// Check timeout.
-	if (count < RCC_TIMEOUT_COUNT) {
-		// Update flag.
-		lse_available = 1;
-	}
-	else {
-		// Switch LSE off if any failure occured.
-		RCC -> CSR &= ~(0b1 << 8); // LSEON='0'.
-	}
-	return lse_available;
 }

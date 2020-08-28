@@ -190,16 +190,16 @@ int main (void) {
 			// Set color according to thresholds.
 			if (msc_ctx.msc_output_current_ua < MSC_CURRENT_THRESHOLD_LOW_UA) {
 				// Low range.
-				TIM21_SetLedColor(TIM2_CHANNEL_MASK_LED_GREEN);
+				TIM2_SetLedColor(TIM2_CHANNEL_MASK_LED_GREEN);
 			}
 			else {
 				if (msc_ctx.msc_output_current_ua < MSC_CURRENT_THRESHOLD_HIGH_UA) {
 					// Mid range.
-					TIM21_SetLedColor(TIM2_CHANNEL_MASK_LED_YELLOW);
+					TIM2_SetLedColor(TIM2_CHANNEL_MASK_LED_YELLOW);
 				}
 				else {
 					// High range.
-					TIM21_SetLedColor(TIM2_CHANNEL_MASK_LED_RED);
+					TIM2_SetLedColor(TIM2_CHANNEL_MASK_LED_RED);
 				}
 			}
 			// Start blink.
