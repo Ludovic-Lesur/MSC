@@ -141,7 +141,8 @@ typedef enum {
 // Common functions.
 void S2LP_Init(void);
 void S2LP_DisableGpio(void);
-void S2LP_ReadRegister(unsigned char addr, unsigned char* value);
+void S2LP_EnterShutdown(void);
+void S2LP_ExitShutdown(void);
 void S2LP_SendCommand(S2LP_Command command);
 void S2LP_WaitForStateSwitch(S2LP_State new_state);
 void S2LP_WaitForXo(void);

@@ -80,6 +80,7 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	LED_SetColor(LED_COLOR_BLUE);
 	// Turn transceiver on.
 	SPI1_PowerOn();
+	S2LP_ExitShutdown();
 	// TX/RX common init.
 	S2LP_SendCommand(S2LP_CMD_STANDBY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_STANDBY);
@@ -123,6 +124,7 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
  *******************************************************************/
 sfx_u8 RF_API_stop(void) {
 	// Turn transceiver and TCXO off.
+	S2LP_EnterShutdown();
 	SPI1_PowerOff();
 	RCC_Tcxo(0);
 	RCC_DisableGpio();

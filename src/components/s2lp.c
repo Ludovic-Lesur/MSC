@@ -76,6 +76,7 @@ void S2LP_Init(void) {
 	// Configure GPIOs.
 	GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	EXTI_ConfigureGpio(&GPIO_S2LP_GPIO0, EXTI_TRIGGER_RISING_EDGE);
+	GPIO_Configure(&GPIO_S2LP_SDN, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 }
 
 /* DISABLE S2LP GPIOs.
@@ -85,6 +86,28 @@ void S2LP_Init(void) {
 void S2LP_DisableGpio(void) {
 	// Configure GPIOs as analog inputs.
 	GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_Configure(&GPIO_S2LP_SDN, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+}
+
+/* PUT S2LP IN SHUTDOWN MODE.
+ * @param:	None.
+ * @return:	None.
+ */
+void S2LP_EnterShutdown(void) {
+	// Put SDN in high impedance (pull-up resistor used).
+	GPIO_Configure(&GPIO_S2LP_SDN, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+}
+
+/* PUT S2LP IN ACTIVE MODE.
+ * @param:	None.
+ * @return:	None.
+ */
+void S2LP_ExitShutdown(void) {
+	// Put SDN low.
+	GPIO_Configure(&GPIO_S2LP_SDN, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_Write(&GPIO_S2LP_SDN, 0);
+	// Wait for reset time.
+	LPTIM1_DelayMilliseconds(100);
 }
 
 /* SEND COMMAND TO S2LP.
@@ -121,16 +144,12 @@ void S2LP_WaitForStateSwitch(S2LP_State new_state) {
  * @return:	None.
  */
 void S2LP_WaitForXo(void) {
-	unsigned char xo_conf0 = 0;
-	unsigned char xo_conf1 = 0;
 	unsigned char xo_on = 0;
 	unsigned char reg_value = 0;
 	// Poll MC_STATE until state is reached.
 	do {
 		S2LP_ReadRegister(S2LP_REG_MC_STATE0, &reg_value);
 		xo_on = (reg_value & 0x01);
-		S2LP_ReadRegister(S2LP_REG_XO_RCO_CONF0, &xo_conf0);
-		S2LP_ReadRegister(S2LP_REG_XO_RCO_CONF1, &xo_conf1);
 	}
 	while (xo_on == 0);
 }

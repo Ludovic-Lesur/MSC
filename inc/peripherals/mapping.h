@@ -25,8 +25,14 @@ static const GPIO GPIO_ADC1_IN6 =				(GPIO) {GPIOA, 0, 6, 0};
 static const GPIO GPIO_ADC1_IN7 =				(GPIO) {GPIOA, 0, 7, 0};
 // TCXO power control.
 static const GPIO GPIO_TCXO_POWER_ENABLE =		(GPIO) {GPIOA, 0, 8, 0};
-// S2LP GPIO.
+// S2LP GPIOs.
 static const GPIO GPIO_S2LP_GPIO0 =				(GPIO) {GPIOA, 0, 12, 0};
+#ifdef HW1_0
+static const GPIO GPIO_S2LP_SDN =				(GPIO) {GPIOA, 0, 10, 0}; // TP2.
+#endif
+#ifdef HW1_1
+static const GPIO GPIO_S2LP_SDN =				(GPIO) {GPIOA, 0, 9, 0};
+#endif
 // Programming.
 static const GPIO GPIO_SWDIO =					(GPIO) {GPIOA, 0, 13, 0};
 static const GPIO GPIO_SWCLK =					(GPIO) {GPIOA, 0, 14, 0};
@@ -42,9 +48,8 @@ static const GPIO GPIO_S2LP_CS = 				(GPIO) {GPIOA, 0, 15, 0};
 // USART2.
 static const GPIO GPIO_USART2_TX =				(GPIO) {GPIOB, 1, 6, 0};
 static const GPIO GPIO_USART2_RX =				(GPIO) {GPIOB, 1, 7, 0};
-// Test points.
+// Test point.
 static const GPIO GPIO_TP1 =					(GPIO) {GPIOB, 1, 2, 0};
-static const GPIO GPIO_TP2 =					(GPIO) {GPIOA, 0, 10, 0};
 #endif
 
 #endif /* MAPPING_H */
