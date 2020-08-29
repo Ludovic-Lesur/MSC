@@ -113,9 +113,11 @@ int main (void) {
 	RTC_Reset();
 	// Start LSI clock.
 	RCC_EnableLsi();
-	// Init RTC and delay timer.
+	// Init RTC and timers.
 	RTC_Init();
 	LPTIM1_Init();
+	TIM2_Init();
+	TIM21_Init(MSC_LED_BLINK_PERIOD_MS);
 	// Unused communication interfaces.
 	USART2_Init();
 	// Components.
@@ -185,8 +187,8 @@ int main (void) {
 		case MSC_STATE_LED:
 			IWDG_Reload();
 			// Init required peripheral.
-			TIM2_Init();
-			TIM21_Init(MSC_LED_BLINK_PERIOD_MS);
+			TIM2_Enable();
+			TIM21_Enable();
 			// Set color according to thresholds.
 			if (msc_ctx.msc_output_current_ua < MSC_CURRENT_THRESHOLD_LOW_UA) {
 				// Low range.
@@ -207,7 +209,6 @@ int main (void) {
 			TIM21_Start(1);
 			// Wait the end of blink.
 			while (TIM21_IsSingleBlinkDone() == 0) {
-				PWR_EnterLowPowerSleepMode();
 				// Keep managing RTC.
 				if (RTC_GetWakeUpTimerFlag() != 0) {
 					// Increment timer.

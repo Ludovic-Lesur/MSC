@@ -53,13 +53,8 @@ void TIM21_IRQHandler(void) {
 			// Increment index.
 			tim_ctx.tim21_dimming_lut_idx++;
 			// Invert direction at end of table.
-			if (tim_ctx.tim21_dimming_lut_idx >= TIM21_DIMMING_LUT_LENGTH) {
+			if (tim_ctx.tim21_dimming_lut_idx >= (TIM21_DIMMING_LUT_LENGTH - 1)) {
 				tim_ctx.tim21_dimming_lut_direction = 1;
-				// Auto stop in single mode.
-				if (tim_ctx.tim21_single_blink != 0) {
-					TIM21_Stop();
-					tim_ctx.tim21_single_blink_done = 1;
-				}
 			}
 		}
 		else {
@@ -68,6 +63,12 @@ void TIM21_IRQHandler(void) {
 			// Invert direction at the beginning of table.
 			if (tim_ctx.tim21_dimming_lut_idx == 0) {
 				tim_ctx.tim21_dimming_lut_direction = 0;
+				// Auto stop in single mode.
+				if (tim_ctx.tim21_single_blink != 0) {
+					TIM2_Stop();
+					TIM21_Stop();
+					tim_ctx.tim21_single_blink_done = 1;
+				}
 			}
 		}
 		// Clear flag.
@@ -100,6 +101,25 @@ void TIM2_Init(void) {
 	TIM2 -> EGR |= (0b1 << 0); // UG='1'.
 }
 
+/* ENABLE TIM2 PERIPHERAL.
+ * @param:	None.
+ * @return:	None.
+ */
+void TIM2_Enable(void) {
+	// Disable peripheral clock.
+	RCC -> APB1ENR |= (0b1 << 0); // TIM2EN='1'.
+}
+
+
+/* DISABLE TIM2 PERIPHERAL.
+ * @param:	None.
+ * @return:	None.
+ */
+void TIM2_Disable(void) {
+	// Disable peripheral clock.
+	RCC -> APB1ENR &= ~(0b1 << 0); // TIM2EN='0'.
+}
+
 /* SET CURRENT LED COLOR.
  * @param led_color:	New LED color.
  * @return:				None.
@@ -126,6 +146,7 @@ void TIM2_Start(void) {
 	GPIO_Configure(&GPIO_LED_GREEN, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_Configure(&GPIO_LED_BLUE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	// Enable counter.
+	TIM2 -> CNT &= 0xFFFF0000;
 	TIM2 -> CR1 |= (0b1 << 0); // CEN='1'.
 }
 
@@ -134,18 +155,10 @@ void TIM2_Start(void) {
  * @return:	None.
  */
 void TIM2_Stop(void) {
+	// Disable all channels.
+	TIM2 -> CCER &= 0xFFFFEEEE;
 	// Disable and reset counter.
 	TIM2 -> CR1 &= ~(0b1 << 0); // CEN='0'.
-	TIM2 -> CNT = 0;
-}
-
-/* DISABLE TIM2 PERIPHERAL.
- * @param:	None.
- * @return:	None.
- */
-void TIM2_Disable(void) {
-	// Disable peripheral clock.
-	RCC -> APB1ENR &= ~(0b1 << 0); // TIM2EN='0'.
 }
 
 /* INIT TIM21 FOR LED BLINKING OPERATION.
@@ -186,6 +199,24 @@ void TIM21_Init(unsigned int led_blink_period_ms) {
  * @param:	None.
  * @return:	None.
  */
+void TIM21_Enable(void) {
+	// Disable peripheral clock.
+	RCC -> APB2ENR |= (0b1 << 2); // TIM21EN='1'.
+}
+
+/* DISABLE TIM21 PERIPHERAL.
+ * @param:	None.
+ * @return:	None.
+ */
+void TIM21_Disable(void) {
+	// Disable peripheral clock.
+	RCC -> APB2ENR &= ~(0b1 << 2); // TIM21EN='0'.
+}
+
+/* ENABLE TIM21 PERIPHERAL.
+ * @param:	None.
+ * @return:	None.
+ */
 void TIM21_Start(unsigned char single_blink) {
 	// Set mode and reset LUT index.
 	tim_ctx.tim21_single_blink = single_blink;
@@ -193,6 +224,7 @@ void TIM21_Start(unsigned char single_blink) {
 	tim_ctx.tim21_dimming_lut_idx = 0;
 	tim_ctx.tim21_dimming_lut_direction = 0;
 	// Clear flag and enable interrupt.
+	TIM21 -> CNT &= 0xFFFF0000;
 	TIM21 -> SR &= ~(0b1 << 0); // Clear flag (UIF='0').
 	NVIC_EnableInterrupt(IT_TIM21);
 	// Enable TIM21 peripheral.
@@ -216,13 +248,4 @@ void TIM21_Stop(void) {
  */
 unsigned char TIM21_IsSingleBlinkDone(void) {
 	return (tim_ctx.tim21_single_blink_done);
-}
-
-/* DISABLE TIM21 PERIPHERAL.
- * @param:	None.
- * @return:	None.
- */
-void TIM21_Disable(void) {
-	// Disable peripheral clock.
-	RCC -> APB2ENR &= ~(0b1 << 2); // TIM21EN='0'.
 }
