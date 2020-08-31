@@ -80,8 +80,13 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	LED_SetColor(LED_COLOR_BLUE);
 	// Turn transceiver on.
 	SPI1_PowerOn();
+	// Turn TCXO on.
+	RCC_EnableGpio();
+	RCC_Tcxo(1);
+	// Exit shutdown.
 	S2LP_ExitShutdown();
 	// TX/RX common init.
+	S2LP_SendCommand(S2LP_CMD_SRES);
 	S2LP_SendCommand(S2LP_CMD_STANDBY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_STANDBY);
 	S2LP_SetOscillator(S2LP_OSCILLATOR_TCXO);
@@ -160,9 +165,6 @@ sfx_u8 RF_API_send(sfx_u8 *stream, sfx_modulation_type_t type, sfx_u8 size) {
 	unsigned char stream_bit_idx = 0;
 	unsigned char s2lp_fifo_sample_idx = 0;
 	unsigned char s2lp_fdev = RF_API_S2LP_FDEV_NEGATIVE; // Effective deviation.
-	// Turn TCXO on.
-	RCC_EnableGpio();
-	RCC_Tcxo(1);
 	// Go to ready state.
 	S2LP_SendCommand(S2LP_CMD_READY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_READY);

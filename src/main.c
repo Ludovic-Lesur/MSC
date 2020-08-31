@@ -182,7 +182,7 @@ int main (void) {
 			// Turn peripherals off.
 			LPTIM1_Disable();
 			// Compute next state.
-			msc_ctx.msc_state = MSC_STATE_SLEEP;
+			msc_ctx.msc_state = MSC_STATE_LED;
 			break;
 		case MSC_STATE_LED:
 			IWDG_Reload();
