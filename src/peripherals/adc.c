@@ -36,6 +36,7 @@
 
 #define ADC_LT6106_VOLTAGE_GAIN				59
 #define ADC_LT6106_SHUNT_RESISTOR_MOHMS		10
+#define ADC_LT6106_OFFSET_CURRENT_UA		15000 // 150µV typical / 10mR = 15mA.
 
 /*** ADC local structures ***/
 
@@ -130,6 +131,13 @@ void ADC1_ComputeOutputCurrent(void) {
 	den *= ADC_LT6106_VOLTAGE_GAIN;
 	den *= ADC_LT6106_SHUNT_RESISTOR_MOHMS;
 	adc_ctx.adc_output_current_ua = (num) / (den);
+	// Remove offset current.
+	if (adc_ctx.adc_output_current_ua < ADC_LT6106_OFFSET_CURRENT_UA) {
+		adc_ctx.adc_output_current_ua = 0;
+	}
+	else {
+		adc_ctx.adc_output_current_ua -= ADC_LT6106_OFFSET_CURRENT_UA;
+	}
 }
 
 /* COMPUTE MCU SUPPLY VOLTAGE.

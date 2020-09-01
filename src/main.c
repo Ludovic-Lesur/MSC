@@ -40,11 +40,11 @@
 
 #define MSC_SIGFOX_PERIOD_SECONDS				600
 #define MSC_SIGFOX_UPLINK_DATA_LENGTH_BYTES		10
-
 #define MSC_LED_BLINK_PERIOD_MS					2000
-
-#define MSC_CURRENT_THRESHOLD_LOW_UA			50000
-#define MSC_CURRENT_THRESHOLD_HIGH_UA			300000
+#define MSC_NUMBER_OF_CURRENT_THRESHOLDS		4
+// Output current thresholds used to indicate charge status with LED color.
+static const unsigned int msc_current_threshold_ua[MSC_NUMBER_OF_CURRENT_THRESHOLDS] = {50000, 300000, 600000, 1000000};
+static const TIM2_LedColor msc_current_threshold_led_color[MSC_NUMBER_OF_CURRENT_THRESHOLDS + 1] = {TIM2_CHANNEL_MASK_LED_GREEN, TIM2_CHANNEL_MASK_LED_YELLOW, TIM2_CHANNEL_MASK_LED_RED, TIM2_CHANNEL_MASK_LED_MAGENTA, TIM2_CHANNEL_MASK_LED_WHITE};
 
 /*** MAIN structures ***/
 
@@ -80,6 +80,7 @@ typedef struct {
 	unsigned int msc_output_current_ua;
 	unsigned int msc_mcu_voltage_mv;
 	unsigned char msc_mcu_temperature_degrees;
+	TIM2_LedColor msc_led_color;
 	// Sigfox.
 	MSC_SigfoxUplinkData msc_sigfox_uplink_data;
 	unsigned char msc_sigfox_downlink_data[SFX_DOWNLINK_DATA_SIZE_BYTES];
@@ -95,11 +96,33 @@ static MSC_Context msc_ctx;
 /*** MAIN functions ***/
 
 #ifdef NM
+/* UPDATE LED COLOR ACCORDING TO OUTPUT CURRENT VALUE.
+ * @param:	None.
+ * @return:	None.
+ */
+void MSC_UpdateLedColor(void) {
+	// Default is maximum.
+	msc_ctx.msc_led_color = msc_current_threshold_led_color[MSC_NUMBER_OF_CURRENT_THRESHOLDS];
+	// Check thresholds.
+	unsigned char idx = 0;
+	for (idx=0 ; idx<MSC_NUMBER_OF_CURRENT_THRESHOLDS ; idx++) {
+		if (msc_ctx.msc_output_current_ua < msc_current_threshold_ua[idx]) {
+			msc_ctx.msc_led_color = msc_current_threshold_led_color[idx];
+			break;
+		}
+	}
+}
+#endif
+
+#ifdef NM
 /* MAIN FUNCTION.
  * @param: 	None.
  * @return: 0.
  */
 int main (void) {
+	// Start LSI clock and watchdog
+	RCC_EnableLsi();
+	IWDG_Init();
 	// Init memory.
 	NVIC_Init();
 	NVM_Enable();
@@ -111,8 +134,6 @@ int main (void) {
 	RCC_SwitchToHsi();
 	// Reset RTC before starting oscillators.
 	RTC_Reset();
-	// Start LSI clock.
-	RCC_EnableLsi();
 	// Init RTC and timers.
 	RTC_Init();
 	LPTIM1_Init();
@@ -126,6 +147,7 @@ int main (void) {
 	// Init context.
 	msc_ctx.msc_state = MSC_STATE_MEASURE;
 	msc_ctx.msc_sigfox_timer_seconds = MSC_SIGFOX_PERIOD_SECONDS; // To send uplink at start-up.
+	msc_ctx.msc_led_color = TIM2_CHANNEL_MASK_LED_OFF;
 	// Local variables.
 	signed char mcu_temperature_degrees = 0;
 	unsigned char mcu_temperature_abs = 0;
@@ -135,6 +157,7 @@ int main (void) {
 	while (1) {
 		switch (msc_ctx.msc_state) {
 		case MSC_STATE_MEASURE:
+			IWDG_Reload();
 			// Perform all analog measurements.
 			ADC1_Init();
 			ADC1_PerformMeasurements();
@@ -179,8 +202,6 @@ int main (void) {
 			SIGFOX_API_close();
 			// Reset Sigfox timer.
 			msc_ctx.msc_sigfox_timer_seconds = 0;
-			// Turn peripherals off.
-			LPTIM1_Disable();
 			// Compute next state.
 			msc_ctx.msc_state = MSC_STATE_LED;
 			break;
@@ -190,20 +211,8 @@ int main (void) {
 			TIM2_Enable();
 			TIM21_Enable();
 			// Set color according to thresholds.
-			if (msc_ctx.msc_output_current_ua < MSC_CURRENT_THRESHOLD_LOW_UA) {
-				// Low range.
-				TIM2_SetLedColor(TIM2_CHANNEL_MASK_LED_GREEN);
-			}
-			else {
-				if (msc_ctx.msc_output_current_ua < MSC_CURRENT_THRESHOLD_HIGH_UA) {
-					// Mid range.
-					TIM2_SetLedColor(TIM2_CHANNEL_MASK_LED_YELLOW);
-				}
-				else {
-					// High range.
-					TIM2_SetLedColor(TIM2_CHANNEL_MASK_LED_RED);
-				}
-			}
+			MSC_UpdateLedColor();
+			TIM2_SetLedColor(msc_ctx.msc_led_color);
 			// Start blink.
 			TIM2_Start();
 			TIM21_Start(1);

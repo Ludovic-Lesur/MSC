@@ -1,6 +1,6 @@
 r
-loadfile Release/BadgeCovidFirmware.hex
-verifyfile Release/BadgeCovidFirmware.hex
+loadfile HW1_0/MSC.hex
+verifyfile HW1_0/MSC.hex
 r
 g
 qc
