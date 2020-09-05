@@ -36,7 +36,7 @@
 
 #define ADC_LT6106_VOLTAGE_GAIN				59
 #define ADC_LT6106_SHUNT_RESISTOR_MOHMS		10
-#define ADC_LT6106_OFFSET_CURRENT_UA		15000 // 150µV typical / 10mR = 15mA.
+#define ADC_LT6106_OFFSET_CURRENT_UA		25000 // 250µV maximum / 10mR = 25mA.
 
 /*** ADC local structures ***/
 
@@ -60,7 +60,7 @@ static ADC_Context adc_ctx;
  * @param adc_result_12bits:	Pointer to int that will contain ADC raw result on 12 bits.
  * @return:						None.
  */
-void ADC1_SingleConversion(unsigned char adc_channel, unsigned int* adc_result_12bits) {
+static void ADC1_SingleConversion(unsigned char adc_channel, unsigned int* adc_result_12bits) {
 	// Select input channel.
 	ADC1 -> CHSELR &= 0xFFF80000; // Reset all bits.
 	ADC1 -> CHSELR |= (0b1 << adc_channel);
@@ -80,7 +80,7 @@ void ADC1_SingleConversion(unsigned char adc_channel, unsigned int* adc_result_1
  * @param adc_result_12bits:	Pointer to int that will contain ADC filtered result on 12 bits.
  * @return:						None.
  */
-void ADC1_FilteredConversion(unsigned char adc_channel, unsigned int* adc_result_12bits) {
+static void ADC1_FilteredConversion(unsigned char adc_channel, unsigned int* adc_result_12bits) {
 	// Perform all conversions.
 	unsigned int adc_sample_buf[ADC_MEDIAN_FILTER_LENGTH] = {0x00};
 	unsigned char idx = 0;
@@ -95,7 +95,7 @@ void ADC1_FilteredConversion(unsigned char adc_channel, unsigned int* adc_result
  * @param:	None.
  * @return:	None.
  */
-void ADC1_ComputeSolarVoltage(void) {
+static void ADC1_ComputeSolarVoltage(void) {
 	// Get raw result.
 	unsigned int solar_voltage_12bits = 0;
 	ADC1_FilteredConversion(ADC_CHANNEL_SOLAR_VOLTAGE, &solar_voltage_12bits);
@@ -107,7 +107,7 @@ void ADC1_ComputeSolarVoltage(void) {
  * @param:	None.
  * @return:	None.
  */
-void ADC1_ComputeOutputVoltage(void) {
+static void ADC1_ComputeOutputVoltage(void) {
 	// Get raw result.
 	unsigned int output_voltage_12bits = 0;
 	ADC1_FilteredConversion(ADC_CHANNEL_OUTPUT_VOLTAGE, &output_voltage_12bits);
@@ -119,7 +119,7 @@ void ADC1_ComputeOutputVoltage(void) {
  * @param:	None.
  * @return:	None.
  */
-void ADC1_ComputeOutputCurrent(void) {
+static void ADC1_ComputeOutputCurrent(void) {
 	// Get raw result.
 	unsigned int output_current_12bits = 0;
 	ADC1_FilteredConversion(ADC_CHANNEL_OUTPUT_CURRENT, &output_current_12bits);
@@ -144,7 +144,7 @@ void ADC1_ComputeOutputCurrent(void) {
  * @param:	None.
  * @return:	None.
  */
-void ADC1_ComputeMcuVoltage(void) {
+static void ADC1_ComputeMcuVoltage(void) {
 	// Retrieve supply voltage from bandgap result.
 	adc_ctx.adc_mcu_voltage_mv = (ADC_LM4040_VOLTAGE_MV * ADC_FULL_SCALE_12BITS) / (adc_ctx.adc_lm4040_voltage_12bits);
 }
@@ -153,7 +153,7 @@ void ADC1_ComputeMcuVoltage(void) {
  * @param:	None.
  * @return:	None.
  */
-void ADC1_ComputeMcuTemperature(void) {
+static void ADC1_ComputeMcuTemperature(void) {
 	// Set sampling time (see p.89 of STM32L031x4/6 datasheet).
 	ADC1 -> SMPR |= (0b111 << 0); // Sampling time for temperature sensor must be greater than 10us, 160.5*(1/ADCCLK) = 20us for ADCCLK = SYSCLK/2 = 8MHz;
 	// Wake-up temperature sensor.

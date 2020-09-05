@@ -38,6 +38,7 @@
 
 /*** MAIN macros ***/
 
+#define MSC_STARTUP_DELAY_MS					2000
 #define MSC_SIGFOX_PERIOD_SECONDS				600
 #define MSC_SIGFOX_UPLINK_DATA_LENGTH_BYTES		10
 #define MSC_LED_BLINK_PERIOD_MS					2000
@@ -153,6 +154,8 @@ int main (void) {
 	unsigned char mcu_temperature_abs = 0;
 	sfx_rc_t tkfx_sigfox_rc = (sfx_rc_t) RC1;
 	unsigned int sfx_error = 0;
+	// Start-up delay (device charge current establishment and reset period limitation).
+	LPTIM1_DelayMilliseconds(MSC_STARTUP_DELAY_MS);
 	// Perform state machine.
 	while (1) {
 		switch (msc_ctx.msc_state) {

@@ -45,7 +45,7 @@ void LPTIM1_IRQHandler(void) {
  * @param arr_value:	ARR register value to write.
  * @return:				None.
  */
-void LPTIM1_WriteArr(unsigned int arr_value) {
+static void LPTIM1_WriteArr(unsigned int arr_value) {
 	unsigned int loop_count = 0;
 	// Reset bits.
 	LPTIM1 -> ICR |= (0b1 << 4);
