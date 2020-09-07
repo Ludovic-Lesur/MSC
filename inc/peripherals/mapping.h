@@ -11,7 +11,6 @@
 #include "gpio.h"
 #include "gpio_reg.h"
 
-#ifdef HW1_0
 // Button.
 static const GPIO GPIO_BUTTON =					(GPIO) {GPIOA, 0, 0, 0};
 // RGB LED.
@@ -50,6 +49,5 @@ static const GPIO GPIO_USART2_TX =				(GPIO) {GPIOB, 1, 6, 0};
 static const GPIO GPIO_USART2_RX =				(GPIO) {GPIOB, 1, 7, 0};
 // Test point.
 static const GPIO GPIO_TP1 =					(GPIO) {GPIOB, 1, 2, 0};
-#endif
 
 #endif /* MAPPING_H */
