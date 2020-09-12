@@ -97,8 +97,13 @@ void TIM2_Init(void) {
 	TIM2 -> CCMR2 |= (0b110 << 12) | (0b1 << 11) | (0b110 << 4) | (0b1 << 3);
 	// Disable channels 2-4 by default (CCxE='0').
 	TIM2 -> CCER &= 0xFFFFEEEE;
+	TIM2 -> CCRx[TIM2_CHANNEL_LED_RED] = (TIM2_ARR_VALUE + 1);
+	TIM2 -> CCRx[TIM2_CHANNEL_LED_GREEN] = (TIM2_ARR_VALUE + 1);
+	TIM2 -> CCRx[TIM2_CHANNEL_LED_BLUE] = (TIM2_ARR_VALUE + 1);
 	// Generate event to update registers.
 	TIM2 -> EGR |= (0b1 << 0); // UG='1'.
+	// Disable peripheral by default.
+	RCC -> APB1ENR &= ~(0b1 << 0); // TIM2EN='0'.
 }
 
 /* ENABLE TIM2 PERIPHERAL.
@@ -175,6 +180,8 @@ void TIM21_Init(unsigned int led_blink_period_ms) {
 	// Reset index.
 	tim_ctx.tim21_dimming_lut_idx = 0;
 	tim_ctx.tim21_dimming_lut_direction = 0;
+	tim_ctx.tim21_single_blink = 0;
+	tim_ctx.tim21_single_blink_done = 0;
 	unsigned int idx = 0;
 	unsigned int delta = 0;
 	unsigned int delta_max = ((TIM21_DIMMING_DELTA_MAX_PERCENT * TIM2_ARR_VALUE) / (100));
@@ -193,6 +200,8 @@ void TIM21_Init(unsigned int led_blink_period_ms) {
 	TIM21 -> EGR |= (0b1 << 0); // UG='1'.
 	// Enable interrupt.
 	TIM21 -> DIER |= (0b1 << 0);
+	// Disable peripheral by default.
+	RCC -> APB2ENR &= ~(0b1 << 2); // TIM21EN='0'.
 }
 
 /* ENABLE TIM21 PERIPHERAL.

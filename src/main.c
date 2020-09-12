@@ -121,7 +121,7 @@ void MSC_UpdateLedColor(void) {
  * @return: 0.
  */
 int main (void) {
-	// Start LSI clock and watchdog
+	// Start LSI clock and watchdog.
 	RCC_EnableLsi();
 	IWDG_Init();
 	// Init memory.
