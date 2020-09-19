@@ -154,8 +154,12 @@ int main (void) {
 	unsigned char mcu_temperature_abs = 0;
 	sfx_rc_t tkfx_sigfox_rc = (sfx_rc_t) RC1;
 	unsigned int sfx_error = 0;
-	// Start-up delay (device charge current establishment and reset period limitation).
+	// Start-up CW and delay to check energy availability (fixing sequence number corruption issue).
+	LED_SetColor(LED_COLOR_WHITE);
+	SIGFOX_API_start_continuous_transmission(867000000, SFX_NO_MODULATION);
 	LPTIM1_DelayMilliseconds(MSC_STARTUP_DELAY_MS);
+	SIGFOX_API_stop_continuous_transmission();
+	LED_SetColor(LED_OFF);
 	// Perform state machine.
 	while (1) {
 		switch (msc_ctx.msc_state) {

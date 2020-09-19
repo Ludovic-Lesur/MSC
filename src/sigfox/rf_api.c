@@ -76,8 +76,6 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	DMA1_InitChannel3();
 	SPI1_Init();
 	S2LP_Init();
-	// Turn LED on.
-	LED_SetColor(LED_COLOR_BLUE);
 	// Turn transceiver on.
 	SPI1_PowerOn();
 	// Turn TCXO on.
@@ -137,8 +135,6 @@ sfx_u8 RF_API_stop(void) {
 	// Turn peripherals off.
 	DMA1_Disable();
 	SPI1_Disable();
-	// Turn LED off.
-	LED_SetColor(LED_OFF);
 	return SFX_ERR_NONE;
 }
 
@@ -165,6 +161,8 @@ sfx_u8 RF_API_send(sfx_u8 *stream, sfx_modulation_type_t type, sfx_u8 size) {
 	unsigned char stream_bit_idx = 0;
 	unsigned char s2lp_fifo_sample_idx = 0;
 	unsigned char s2lp_fdev = RF_API_S2LP_FDEV_NEGATIVE; // Effective deviation.
+	// Turn LED on.
+	LED_SetColor(LED_COLOR_BLUE);
 	// Go to ready state.
 	S2LP_SendCommand(S2LP_CMD_READY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
@@ -228,6 +226,8 @@ sfx_u8 RF_API_send(sfx_u8 *stream, sfx_modulation_type_t type, sfx_u8 size) {
 	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
 	S2LP_SendCommand(S2LP_CMD_STANDBY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_STANDBY);
+	// Turn LED off.
+	LED_SetColor(LED_OFF);
 	// Return.
 	return SFX_ERR_NONE;
 }
