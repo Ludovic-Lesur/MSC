@@ -173,16 +173,7 @@ int main (void) {
 			ADC1_GetOutputVoltage(&msc_ctx.msc_output_voltage_mv);
 			ADC1_GetOutputCurrent(&msc_ctx.msc_output_current_ua);
 			ADC1_GetMcuVoltage(&msc_ctx.msc_mcu_voltage_mv);
-			ADC1_GetMcuTemperature(&mcu_temperature_degrees);
-			msc_ctx.msc_mcu_temperature_degrees = 0;
-			if (mcu_temperature_degrees < 0) {
-				msc_ctx.msc_mcu_temperature_degrees |= 0x80;
-				mcu_temperature_abs = (-1) * (mcu_temperature_degrees);
-				msc_ctx.msc_mcu_temperature_degrees |= (mcu_temperature_abs & 0x7F);
-			}
-			else {
-				msc_ctx.msc_mcu_temperature_degrees = mcu_temperature_degrees & 0x7F;
-			}
+			ADC1_GetMcuTemperatureComp1(&msc_ctx.msc_mcu_temperature_degrees);
 			// Compute next state.
 			if (msc_ctx.msc_sigfox_timer_seconds >= MSC_SIGFOX_PERIOD_SECONDS) {
 				msc_ctx.msc_state = MSC_STATE_SIGFOX;

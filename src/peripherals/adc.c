@@ -46,7 +46,8 @@ typedef struct {
 	unsigned int adc_output_voltage_mv;
 	unsigned int adc_output_current_ua;
 	unsigned int adc_mcu_voltage_mv;
-	unsigned char adc_mcu_temperature_degrees;
+	unsigned char adc_mcu_temperature_degrees_comp1;
+	signed char adc_mcu_temperature_degrees_comp2;
 } ADC_Context;
 
 /*** ADC local global variables ***/
@@ -166,18 +167,18 @@ static void ADC1_ComputeMcuTemperature(void) {
 	int raw_temp_calib_mv = (raw_temp_sensor_12bits * adc_ctx.adc_mcu_voltage_mv) / (TS_VCC_CALIB_MV) - TS_CAL1; // Equivalent raw measure for calibration power supply (VCC_CALIB).
 	int temp_calib_degrees = raw_temp_calib_mv * ((int)(TS_CAL2_TEMP-TS_CAL1_TEMP));
 	temp_calib_degrees = (temp_calib_degrees) / ((int)(TS_CAL2 - TS_CAL1));
-	signed char mcu_temperature_signed = temp_calib_degrees + TS_CAL1_TEMP;
+	adc_ctx.adc_mcu_temperature_degrees_comp2 = temp_calib_degrees + TS_CAL1_TEMP;
 	// Switch temperature sensor off.
 	ADC1 -> CCR &= ~(0b1 << 23); // TSEN='0'.
 	// Convert to 1-complement value.
-	adc_ctx.adc_mcu_temperature_degrees = 0;
-	if (mcu_temperature_signed < 0) {
-		adc_ctx.adc_mcu_temperature_degrees |= 0x80;
-		unsigned char temperature_abs = (-1) * (mcu_temperature_signed);
-		adc_ctx.adc_mcu_temperature_degrees |= (temperature_abs & 0x7F);
+	adc_ctx.adc_mcu_temperature_degrees_comp1 = 0;
+	if (adc_ctx.adc_mcu_temperature_degrees_comp2 < 0) {
+		adc_ctx.adc_mcu_temperature_degrees_comp1 |= 0x80;
+		unsigned char temperature_abs = (-1) * (adc_ctx.adc_mcu_temperature_degrees_comp2);
+		adc_ctx.adc_mcu_temperature_degrees_comp1 |= (temperature_abs & 0x7F);
 	}
 	else {
-		adc_ctx.adc_mcu_temperature_degrees = (mcu_temperature_signed & 0x7F);
+		adc_ctx.adc_mcu_temperature_degrees_comp1 = (adc_ctx.adc_mcu_temperature_degrees_comp2 & 0x7F);
 	}
 }
 
@@ -199,7 +200,8 @@ void ADC1_Init(void) {
 	adc_ctx.adc_output_voltage_mv = 0;
 	adc_ctx.adc_output_current_ua = 0;
 	adc_ctx.adc_mcu_voltage_mv = 0;
-	adc_ctx.adc_mcu_temperature_degrees = 0;
+	adc_ctx.adc_mcu_temperature_degrees_comp2 = 0;
+	adc_ctx.adc_mcu_temperature_degrees_comp1 = 0;
 	// Enable peripheral clock.
 	RCC -> APB2ENR |= (0b1 << 9); // ADCEN='1'.
 	// Ensure ADC is disabled.
@@ -304,9 +306,17 @@ void ADC1_GetMcuVoltage(unsigned int* mcu_voltage_mv) {
 }
 
 /* GET MCU TEMPERATURE.
- * @param mcu_temperature_degrees:	Pointer to signed value that will contain MCU temperature in degrees.
+ * @param mcu_temperature_degrees:	Pointer to signed value that will contain MCU temperature in degrees (2-complement).
  * @return:							None.
  */
-void ADC1_GetMcuTemperature(unsigned char* mcu_temperature_degrees) {
-	(*mcu_temperature_degrees) = adc_ctx.adc_mcu_temperature_degrees;
+void ADC1_GetMcuTemperatureComp2(signed char* mcu_temperature_degrees) {
+	(*mcu_temperature_degrees) = adc_ctx.adc_mcu_temperature_degrees_comp2;
+}
+
+/* GET MCU TEMPERATURE.
+ * @param mcu_temperature_degrees:	Pointer to unsigned value that will contain MCU temperature in degrees (1-complement).
+ * @return:							None.
+ */
+void ADC1_GetMcuTemperatureComp1(unsigned char* mcu_temperature_degrees) {
+	(*mcu_temperature_degrees) = adc_ctx.adc_mcu_temperature_degrees_comp1;
 }

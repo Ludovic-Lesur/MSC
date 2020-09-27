@@ -18,7 +18,6 @@
 #include "pwr.h"
 #include "rcc.h"
 #include "s2lp.h"
-#include "s2lp_reg.h"
 #include "sigfox_api.h"
 #include "sigfox_types.h"
 #include "spi.h"
@@ -245,14 +244,10 @@ sfx_u8 RF_API_send(sfx_u8 *stream, sfx_modulation_type_t type, sfx_u8 size) {
 sfx_u8 RF_API_start_continuous_transmission (sfx_modulation_type_t type) {
 	// Disable modulation.
 	S2LP_SetModulation(S2LP_MODULATION_NONE);
-	// Turn TCXO on.
-	RCC_EnableGpio();
-	RCC_Tcxo(1);
 	// Start radio.
 	S2LP_SendCommand(S2LP_CMD_READY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
 	S2LP_SendCommand(S2LP_CMD_TX);
-	S2LP_WaitForStateSwitch(S2LP_STATE_TX);
 	// Return.
 	return SFX_ERR_NONE;
 }
