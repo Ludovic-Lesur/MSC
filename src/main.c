@@ -33,7 +33,6 @@
 // Applicative.
 #include "at.h"
 #include "mode.h"
-#include "monitoring.h"
 #include "sigfox_api.h"
 
 /*** MAIN macros ***/
@@ -41,11 +40,14 @@
 #define MSC_STARTUP_DELAY_MS					2000
 #define MSC_SIGFOX_PERIOD_SECONDS				600
 #define MSC_SIGFOX_UPLINK_DATA_LENGTH_BYTES		10
+#define MSC_SIGFOX_DOWNLINK_DATA_LENGTH_BYTES	8
 #define MSC_LED_BLINK_PERIOD_MS					2000
 #define MSC_NUMBER_OF_CURRENT_THRESHOLDS		4
+#ifdef NM
 // Output current thresholds used to indicate charge status with LED color.
 static const unsigned int msc_current_threshold_ua[MSC_NUMBER_OF_CURRENT_THRESHOLDS] = {50000, 300000, 600000, 1000000};
 static const TIM2_LedColor msc_current_threshold_led_color[MSC_NUMBER_OF_CURRENT_THRESHOLDS + 1] = {TIM2_CHANNEL_MASK_LED_GREEN, TIM2_CHANNEL_MASK_LED_YELLOW, TIM2_CHANNEL_MASK_LED_RED, TIM2_CHANNEL_MASK_LED_MAGENTA, TIM2_CHANNEL_MASK_LED_WHITE};
+#endif
 
 /*** MAIN structures ***/
 
@@ -84,7 +86,7 @@ typedef struct {
 	TIM2_LedColor msc_led_color;
 	// Sigfox.
 	MSC_SigfoxUplinkData msc_sigfox_uplink_data;
-	unsigned char msc_sigfox_downlink_data[SFX_DOWNLINK_DATA_SIZE_BYTES];
+	unsigned char msc_sigfox_downlink_data[MSC_SIGFOX_DOWNLINK_DATA_LENGTH_BYTES];
 } MSC_Context;
 #endif
 

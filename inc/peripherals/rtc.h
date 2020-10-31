@@ -20,7 +20,7 @@
 
 void RTC_Reset(void);
 void RTC_Init(void);
-void RTC_StartWakeUpTimer(unsigned char delay_seconds);
+void RTC_StartWakeUpTimer(unsigned int delay_seconds);
 void RTC_StopWakeUpTimer(void);
 volatile unsigned char RTC_GetWakeUpTimerFlag(void);
 void RTC_ClearWakeUpTimerFlag(void);

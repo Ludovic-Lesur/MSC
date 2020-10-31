@@ -68,17 +68,6 @@ static void S2LP_ReadRegister(unsigned char addr, unsigned char* value) {
 
 /*** S2LP functions ***/
 
-/* INIT S2LP TRANSCEIVER.
- * @param:	None.
- * @return:	None.
- */
-void S2LP_Init(void) {
-	// Configure GPIOs.
-	GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	EXTI_ConfigureGpio(&GPIO_S2LP_GPIO0, EXTI_TRIGGER_RISING_EDGE);
-	GPIO_Configure(&GPIO_S2LP_SDN, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-}
-
 /* DISABLE S2LP GPIOs.
  * @param:	None.
  * @return:	None.

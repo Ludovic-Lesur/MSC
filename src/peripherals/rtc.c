@@ -18,6 +18,7 @@
 /*** RTC local macros ***/
 
 #define RTC_INIT_TIMEOUT_COUNT		1000
+#define RTC_WAKEUP_TIMER_DELAY_MAX	65536
 
 /*** RTC local global variables ***/
 
@@ -122,14 +123,19 @@ void RTC_Init(void) {
 	EXTI_ConfigureLine(EXTI_LINE_RTC_WAKEUP_TIMER, EXTI_TRIGGER_RISING_EDGE);
 }
 
-void RTC_StartWakeUpTimer(unsigned char delay_seconds) {
+void RTC_StartWakeUpTimer(unsigned int delay_seconds) {
+	// Clamp parameter.
+	unsigned int local_delay_seconds = delay_seconds;
+	if (local_delay_seconds > RTC_WAKEUP_TIMER_DELAY_MAX) {
+		local_delay_seconds = RTC_WAKEUP_TIMER_DELAY_MAX;
+	}
 	// Check if timer si not allready running.
 	if (((RTC -> CR) & (0b1 << 10)) == 0) {
 		// Enable RTC and register access.
 		RTC_EnterInitializationMode();
 		// Configure wake-up timer.
 		RTC -> CR &= ~(0b1 << 10); // Disable wake-up timer.
-		RTC -> WUTR = (delay_seconds - 1);
+		RTC -> WUTR = (local_delay_seconds - 1);
 		// Clear flags.
 		RTC -> ISR &= ~(0b1 << 10); // WUTF='0'.
 		EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);

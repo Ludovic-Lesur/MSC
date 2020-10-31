@@ -74,7 +74,6 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	// Init required peripherals.
 	DMA1_InitChannel3();
 	SPI1_Init();
-	S2LP_Init();
 	// Turn transceiver on.
 	SPI1_PowerOn();
 	// Turn TCXO on.
@@ -92,6 +91,9 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	// Dedicated configurations.
 	switch (rf_mode) {
 	case SFX_RF_MODE_TX:
+		// Configure GPIO.
+		GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+		EXTI_ConfigureGpio(&GPIO_S2LP_GPIO0, EXTI_TRIGGER_RISING_EDGE);
 		// Uplink.
 		S2LP_ConfigurePa();
 		S2LP_SetModulation(S2LP_MODULATION_POLAR);
