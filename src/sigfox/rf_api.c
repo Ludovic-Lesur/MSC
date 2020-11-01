@@ -17,6 +17,7 @@
 #include "nvic.h"
 #include "pwr.h"
 #include "rcc.h"
+#include "rtc.h"
 #include "s2lp.h"
 #include "sigfox_api.h"
 #include "sigfox_types.h"
@@ -45,12 +46,15 @@ static const unsigned char rf_api_etsi_bit0_amplitude_profile[RF_API_SYMBOL_PROF
 // Downlink parameters.
 #define RF_API_DOWNLINK_FRAME_LENGTH_BYTES		15
 #define RF_API_DOWNLINK_TIMEOUT_SECONDS			25
-#define RF_API_ESTI_DOWNLINK_DATARATE			S2LP_DATARATE_600BPS
-#define RF_API_ETSI_DOWNLINK_DEVIATION			S2LP_FDEV_800HZ
+#define RF_API_DOWNLINK_DATARATE				S2LP_DATARATE_600BPS
+#define RF_API_DOWNLINK_DEVIATION				S2LP_FDEV_800HZ
+#define RF_API_DOWNLINK_PREAMBLE_LENGTH_BITS	32 // 0xAAAAAAAA.
+#define RF_API_DOWNLINK_SYNC_WORD_LENGTH_BITS	16 // 0xB227.
 
 /*** RF API local global variables ***/
 
 static unsigned char rf_api_s2lp_fifo_buffer[RF_API_S2LP_FIFO_BUFFER_LENGTH_BYTES];
+static unsigned char downlink_sync_word[(RF_API_DOWNLINK_SYNC_WORD_LENGTH_BITS / 8)] = {0xB2, 0x27};
 
 /*** RF API functions ***/
 
@@ -71,6 +75,8 @@ static unsigned char rf_api_s2lp_fifo_buffer[RF_API_S2LP_FIFO_BUFFER_LENGTH_BYTE
  * \retval RF_ERR_API_INIT:          Init Radio link error
  *******************************************************************/
 sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
+	// Clear watchdog.
+	IWDG_Reload();
 	// Init required peripherals.
 	DMA1_InitChannel3();
 	SPI1_Init();
@@ -104,10 +110,25 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 		S2LP_ConfigureGpio(0, S2LP_GPIO_MODE_OUT_LOW_POWER, S2LP_GPIO_OUTPUT_FUNCTION_FIFO_EMPTY, 0);
 		break;
 	case SFX_RF_MODE_RX:
+		// Configure GPIO.
+		GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_UP);
+		EXTI_ConfigureGpio(&GPIO_S2LP_GPIO0, EXTI_TRIGGER_FALLING_EDGE);
 		// Downlink.
 		S2LP_SetModulation(S2LP_MODULATION_2GFSK_BT1);
-		S2LP_SetFskDeviation(RF_API_ETSI_DOWNLINK_DEVIATION);
-		S2LP_SetBitRate(RF_API_ESTI_DOWNLINK_DATARATE);
+		S2LP_SetFskDeviation(RF_API_DOWNLINK_DEVIATION);
+		S2LP_SetBitRate(RF_API_DOWNLINK_DATARATE);
+		S2LP_SetRxBandwidth(S2LP_RXBW_1KHZ);
+		S2LP_ConfigureGpio(0, S2LP_GPIO_MODE_OUT_LOW_POWER, S2LP_GPIO_OUTPUT_FUNCTION_NIRQ, 1);
+		S2LP_ConfigureIrq(S2LP_IRQ_RX_DATA_READY_IDX, 1);
+		// Downlink packet structure.
+		S2LP_SetPreambleDetector((RF_API_DOWNLINK_PREAMBLE_LENGTH_BITS / 2), S2LP_PREAMBLE_PATTERN_1010);
+		S2LP_SetSyncWord(downlink_sync_word, RF_API_DOWNLINK_SYNC_WORD_LENGTH_BITS);
+		S2LP_SetPacketlength(RF_API_DOWNLINK_FRAME_LENGTH_BYTES);
+		S2LP_DisableCrc();
+		// Disable equalization.
+		S2LP_DisableEqualization();
+		// FIFO.
+		S2LP_SetRxSource(S2LP_RX_SOURCE_NORMAL);
 		break;
 	default:
 		// Unknwon mode.
@@ -311,7 +332,54 @@ sfx_u8 RF_API_change_frequency(sfx_u32 frequency) {
  * \retval SFX_ERR_NONE:                      No error
  *******************************************************************/
 sfx_u8 RF_API_wait_frame(sfx_u8 *frame, sfx_s16 *rssi, sfx_rx_state_enum_t * state) {
-	// TBD.
+	// Init state.
+	(*state) = DL_TIMEOUT;
+	// Got to ready state.
+	S2LP_SendCommand(S2LP_CMD_READY);
+	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
+	S2LP_SendCommand(S2LP_CMD_FLUSHRXFIFO);
+	// Turn LED on.
+	LED_SetColor(LED_COLOR_BLUE);
+	// Start radio.
+	S2LP_SendCommand(S2LP_CMD_RX);
+	// Enable external GPIO.
+	EXTI_ClearAllFlags();
+	NVIC_EnableInterrupt(IT_EXTI_4_15);
+	// Clear watchdog.
+	IWDG_Reload();
+	// Enter stop mode until GPIO interrupt or RTC wake-up.
+	unsigned int remaining_delay = RF_API_DOWNLINK_TIMEOUT_SECONDS;
+	unsigned int sub_delay = 0;
+	while ((remaining_delay > 0) && (GPIO_Read(&GPIO_S2LP_GPIO0) != 0)) {
+		// Compute sub-delay.
+		sub_delay = (remaining_delay > IWDG_REFRESH_PERIOD_SECONDS) ? (IWDG_REFRESH_PERIOD_SECONDS) : (remaining_delay);
+		remaining_delay -= sub_delay;
+		// Start wake-up timer.
+		RTC_StartWakeUpTimer(sub_delay);
+		PWR_EnterStopMode();
+		// Wake-up: clear watchdog and flags.
+		IWDG_Reload();
+		RTC_ClearWakeUpTimerFlag();
+		EXTI_ClearAllFlags();
+	}
+	// Wake-up: disable interrupts.
+	RTC_StopWakeUpTimer();
+	NVIC_DisableInterrupt(IT_EXTI_4_15);
+	// Check GPIO.
+	if (GPIO_Read(&GPIO_S2LP_GPIO0) == 0) {
+		// Downlink frame received.
+		(*state) = DL_PASSED;
+		S2LP_ReadFifo(frame, RF_API_DOWNLINK_FRAME_LENGTH_BYTES);
+	}
+	// Stop radio.
+	S2LP_SendCommand(S2LP_CMD_SABORT);
+	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
+	S2LP_SendCommand(S2LP_CMD_FLUSHRXFIFO);
+	S2LP_SendCommand(S2LP_CMD_STANDBY);
+	S2LP_WaitForStateSwitch(S2LP_STATE_STANDBY);
+	// Turn LED off.
+	LED_SetColor(LED_OFF);
+	// Return.
 	return SFX_ERR_NONE;
 }
 

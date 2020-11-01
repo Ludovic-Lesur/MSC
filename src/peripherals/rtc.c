@@ -123,6 +123,10 @@ void RTC_Init(void) {
 	EXTI_ConfigureLine(EXTI_LINE_RTC_WAKEUP_TIMER, EXTI_TRIGGER_RISING_EDGE);
 }
 
+/* START RTC WAKE-UP TIMER.
+ * @param delay_seconds:	Delay in seconds.
+ * @return:					None.
+ */
 void RTC_StartWakeUpTimer(unsigned int delay_seconds) {
 	// Clamp parameter.
 	unsigned int local_delay_seconds = delay_seconds;
@@ -147,6 +151,10 @@ void RTC_StartWakeUpTimer(unsigned int delay_seconds) {
 	}
 }
 
+/* STOP RTC WAKE-UP TIMER.
+ * @param:	None.
+ * @return:	None.
+ */
 void RTC_StopWakeUpTimer(void) {
 	// Enable RTC and register access.
 	RTC_EnterInitializationMode();

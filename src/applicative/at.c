@@ -762,7 +762,6 @@ static void AT_DecodeRxBuffer(void) {
 					if (sfx_error == SFX_ERR_NONE) {
 						sfx_error = SIGFOX_API_send_frame(sfx_uplink_data, extracted_length, sfx_downlink_data, 2, downlink_request);
 					}
-
 					SIGFOX_API_close();
 					if (sfx_error == SFX_ERR_NONE) {
 						if (downlink_request == 1) {

@@ -266,6 +266,9 @@ int main (void) {
  * @return: 0.
  */
 int main (void) {
+	// Start LSI clock and watchdog.
+	RCC_EnableLsi();
+	IWDG_Init();
 	// Init memory.
 	NVIC_Init();
 	NVM_Enable();
@@ -274,10 +277,13 @@ int main (void) {
 	EXTI_Init();
 	// Init clock.
 	RCC_Init();
-	RCC_EnableLsi();
 	RCC_SwitchToHsi();
-	// Init peripherals.
+	// Reset RTC before starting oscillators.
+	RTC_Reset();
+	// Init RTC and timers.
+	RTC_Init();
 	LPTIM1_Init();
+	// Init peripherals.
 	ADC1_Init();
 	USART2_Init();
 	// Applicative layers.
@@ -285,6 +291,7 @@ int main (void) {
 	// Main loop.
 	while (1) {
 		AT_Task();
+		IWDG_Reload();
 	}
 	return 0;
 }
