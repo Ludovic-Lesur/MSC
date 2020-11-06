@@ -334,6 +334,7 @@ sfx_u8 RF_API_change_frequency(sfx_u32 frequency) {
 sfx_u8 RF_API_wait_frame(sfx_u8 *frame, sfx_s16 *rssi, sfx_rx_state_enum_t * state) {
 	// Init state.
 	(*state) = DL_TIMEOUT;
+	sfx_error_t sfx_err = RF_ERR_API_WAIT_FRAME;
 	// Got to ready state.
 	S2LP_SendCommand(S2LP_CMD_READY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
@@ -369,6 +370,7 @@ sfx_u8 RF_API_wait_frame(sfx_u8 *frame, sfx_s16 *rssi, sfx_rx_state_enum_t * sta
 	if (GPIO_Read(&GPIO_S2LP_GPIO0) == 0) {
 		// Downlink frame received.
 		(*state) = DL_PASSED;
+		sfx_err = SFX_ERR_NONE;
 		S2LP_ReadFifo(frame, RF_API_DOWNLINK_FRAME_LENGTH_BYTES);
 	}
 	// Stop radio.
@@ -380,7 +382,7 @@ sfx_u8 RF_API_wait_frame(sfx_u8 *frame, sfx_s16 *rssi, sfx_rx_state_enum_t * sta
 	// Turn LED off.
 	LED_SetColor(LED_OFF);
 	// Return.
-	return SFX_ERR_NONE;
+	return sfx_err;
 }
 
 /*!******************************************************************

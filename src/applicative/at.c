@@ -8,6 +8,7 @@
 #include "at.h"
 
 #include "adc.h"
+#include "addon_sigfox_rf_protocol_api.h"
 #include "aes.h"
 #include "flash_reg.h"
 #include "lptim.h"
@@ -51,6 +52,7 @@
 #define AT_IN_HEADER_SF									"AT$SF="		// AT$SF=<uplink_data>,<downlink_request><CR>.
 #define AT_IN_HEADER_SB									"AT$SB="		// AT$SB=<bit><CR>.
 #define AT_IN_HEADER_CW									"AT$CW="		// AT$CW=<frequency_hz>,<enable>,<output_power_dbm><CR>.
+#define AT_IN_HEADER_TM									"AT$TM="		// AT$TM=<rc>,<test_mode><CR>.
 
 // Output commands without data.
 #define AT_OUT_COMMAND_OK								"OK"
@@ -78,6 +80,8 @@
 #define AT_OUT_ERROR_RF_FREQUENCY_UNDERFLOW				0x81			// RF frequency is too low.
 #define AT_OUT_ERROR_RF_FREQUENCY_OVERFLOW				0x82			// RF frequency is too high.
 #define AT_OUT_ERROR_RF_OUTPUT_POWER_OVERFLOW			0x83			// RF output power is too high.
+#define AT_OUT_ERROR_UNKNOWN_RC							0x84			// Unknown Sigfox RC.
+#define AT_OUT_ERROR_UNKNOWN_TEST_MODE					0x85			// Unknwon Sigfox test mode.
 
 /*** AT local structures ***/
 
@@ -855,6 +859,52 @@ static void AT_DecodeRxBuffer(void) {
 			}
 			else {
 				// Error in frequency parameter.
+				AT_ReplyError(AT_ERROR_SOURCE_AT, get_param_result);
+			}
+		}
+#endif
+#ifdef AT_COMMANDS_TEST_MODES
+		/* Sigfox test mode command AT$TM=<rc>,<test_mode><CR> */
+		else if (AT_CompareHeader(AT_IN_HEADER_TM) == AT_NO_ERROR) {
+			unsigned int rc = 0;
+			// Search RC parameter.
+			get_param_result = AT_GetParameter(AT_PARAM_TYPE_DECIMAL, 0, &rc);
+			if (get_param_result == AT_NO_ERROR) {
+				// Check value.
+				if (rc < SFX_RC_LIST_MAX_SIZE) {
+					// Search test mode number.
+					unsigned int test_mode = 0;
+					get_param_result =  AT_GetParameter(AT_PARAM_TYPE_DECIMAL, 1, &test_mode);
+					if (get_param_result == AT_NO_ERROR) {
+						// Check parameters.
+						if (test_mode <= SFX_TEST_MODE_NVM) {
+							// Call test mode function wth public key.
+							sfx_error = ADDON_SIGFOX_RF_PROTOCOL_API_test_mode(rc, test_mode);
+							if (sfx_error == SFX_ERR_NONE) {
+								AT_ReplyOk();
+							}
+							else {
+								// Error from Sigfox library.
+								AT_ReplyError(AT_ERROR_SOURCE_SFX, sfx_error);
+							}
+						}
+						else {
+							// Invalid test mode.
+							AT_ReplyError(AT_ERROR_SOURCE_AT, AT_OUT_ERROR_UNKNOWN_TEST_MODE);
+						}
+					}
+					else {
+						// Error in test_mode parameter.
+						AT_ReplyError(AT_ERROR_SOURCE_AT, get_param_result);
+					}
+				}
+				else {
+					// Invalid RC.
+					AT_ReplyError(AT_ERROR_SOURCE_AT, AT_OUT_ERROR_UNKNOWN_RC);
+				}
+			}
+			else {
+				// Error in RC parameter.
 				AT_ReplyError(AT_ERROR_SOURCE_AT, get_param_result);
 			}
 		}
