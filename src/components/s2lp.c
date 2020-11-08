@@ -292,7 +292,7 @@ void S2LP_ConfigureGpio(unsigned char gpio_number, S2LP_GPIO_Mode gpio_mode, uns
 	// Select FIFO flags.
 	S2LP_ReadRegister(S2LP_REG_PROTOCOL2, &reg_value);
 	reg_value &= 0xFB;
-	reg_value |= fifo_flag_direction;
+	reg_value |= ((fifo_flag_direction & 0x01) << 2);
 	S2LP_WriteRegister(S2LP_REG_PROTOCOL2, reg_value);
 }
 
@@ -322,6 +322,21 @@ void S2LP_ConfigureIrq(S2LP_IrqIndex irq_idx, unsigned irq_enable) {
 	reg_value |= (irq_enable << irq_bit_offset);
 	// Program register.
 	S2LP_WriteRegister((S2LP_REG_IRQ_MASK0 - reg_addr_offset), reg_value);
+}
+
+/* READ S2LP IRQ FLAG.
+ * @param irq_idx:		Interrupt index (use enumeration defined in s2lp.h).
+ * @return:				Flag value (0/1).
+ */
+unsigned char S2LP_GetIrqFlag(S2LP_IrqIndex irq_idx) {
+	// Get register and bit offsets.
+	unsigned char reg_addr_offset = (irq_idx / 8);
+	unsigned char irq_bit_offset = (irq_idx % 8);
+	// Read register.
+	unsigned char reg_value = 0;
+	S2LP_ReadRegister((S2LP_REG_IRQ_STATUS0 - reg_addr_offset), &reg_value);
+	// Return bit.
+	return ((reg_value & (0b1 << irq_bit_offset)) >> irq_bit_offset);
 }
 
 /* READ S2LP IRQ FLAGS.
@@ -497,16 +512,16 @@ void S2LP_SetRxBandwidth(S2LP_MantissaExponent rxbw_setting) {
 	S2LP_WriteRegister(S2LP_REG_CHFLT, chflt_reg_value);
 }
 
-/* DISABLE ISI CANCELLATION EQUALIZER.
+/* DISABLE CS, EQUALIZATION AND ANTENNA SWITCHING.
  * @param:	None.
  * @return:	None.
  */
-void S2LP_DisableEqualization(void) {
+void S2LP_DisableEquaCsAntSwitch(void) {
 	// Read register.
 	unsigned char ant_select_conf_reg_value = 0;
 	S2LP_ReadRegister(S2LP_REG_ANT_SELECT_CONF, &ant_select_conf_reg_value);
 	// Disable equalization.
-	ant_select_conf_reg_value &= 0x9F;
+	ant_select_conf_reg_value &= 0x83;
 	// Program register.
 	S2LP_WriteRegister(S2LP_REG_ANT_SELECT_CONF, ant_select_conf_reg_value);
 }

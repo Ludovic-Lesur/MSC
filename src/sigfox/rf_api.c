@@ -50,11 +50,13 @@ static const unsigned char rf_api_etsi_bit0_amplitude_profile[RF_API_SYMBOL_PROF
 #define RF_API_DOWNLINK_DEVIATION				S2LP_FDEV_800HZ
 #define RF_API_DOWNLINK_PREAMBLE_LENGTH_BITS	32 // 0xAAAAAAAA.
 #define RF_API_DOWNLINK_SYNC_WORD_LENGTH_BITS	16 // 0xB227.
+#define RF_API_WAIT_FRAME_CALLS_MAX				100
 
 /*** RF API local global variables ***/
 
 static unsigned char rf_api_s2lp_fifo_buffer[RF_API_S2LP_FIFO_BUFFER_LENGTH_BYTES];
 static unsigned char downlink_sync_word[(RF_API_DOWNLINK_SYNC_WORD_LENGTH_BITS / 8)] = {0xB2, 0x27};
+static unsigned int rf_api_wait_frame_calls_count = 0;
 
 /*** RF API functions ***/
 
@@ -98,7 +100,7 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	switch (rf_mode) {
 	case SFX_RF_MODE_TX:
 		// Configure GPIO.
-		GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+		GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_DOWN);
 		EXTI_ConfigureGpio(&GPIO_S2LP_GPIO0, EXTI_TRIGGER_RISING_EDGE);
 		// Uplink.
 		S2LP_ConfigurePa();
@@ -110,6 +112,8 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 		S2LP_ConfigureGpio(0, S2LP_GPIO_MODE_OUT_LOW_POWER, S2LP_GPIO_OUTPUT_FUNCTION_FIFO_EMPTY, 0);
 		break;
 	case SFX_RF_MODE_RX:
+		// Reset call counter.
+		rf_api_wait_frame_calls_count = 0;
 		// Configure GPIO.
 		GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_UP);
 		EXTI_ConfigureGpio(&GPIO_S2LP_GPIO0, EXTI_TRIGGER_FALLING_EDGE);
@@ -125,8 +129,8 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 		S2LP_SetSyncWord(downlink_sync_word, RF_API_DOWNLINK_SYNC_WORD_LENGTH_BITS);
 		S2LP_SetPacketlength(RF_API_DOWNLINK_FRAME_LENGTH_BYTES);
 		S2LP_DisableCrc();
-		// Disable equalization.
-		S2LP_DisableEqualization();
+		// Disable CS blanking, equalization and antenna switching.
+		S2LP_DisableEquaCsAntSwitch();
 		// FIFO.
 		S2LP_SetRxSource(S2LP_RX_SOURCE_NORMAL);
 		break;
@@ -335,52 +339,56 @@ sfx_u8 RF_API_wait_frame(sfx_u8 *frame, sfx_s16 *rssi, sfx_rx_state_enum_t * sta
 	// Init state.
 	(*state) = DL_TIMEOUT;
 	sfx_error_t sfx_err = RF_ERR_API_WAIT_FRAME;
-	// Got to ready state.
-	S2LP_SendCommand(S2LP_CMD_READY);
-	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
-	S2LP_SendCommand(S2LP_CMD_FLUSHRXFIFO);
-	// Turn LED on.
-	LED_SetColor(LED_COLOR_BLUE);
-	// Start radio.
-	S2LP_SendCommand(S2LP_CMD_RX);
-	// Enable external GPIO.
-	EXTI_ClearAllFlags();
-	NVIC_EnableInterrupt(IT_EXTI_4_15);
-	// Clear watchdog.
-	IWDG_Reload();
-	// Enter stop mode until GPIO interrupt or RTC wake-up.
-	unsigned int remaining_delay = RF_API_DOWNLINK_TIMEOUT_SECONDS;
-	unsigned int sub_delay = 0;
-	while ((remaining_delay > 0) && (GPIO_Read(&GPIO_S2LP_GPIO0) != 0)) {
-		// Compute sub-delay.
-		sub_delay = (remaining_delay > IWDG_REFRESH_PERIOD_SECONDS) ? (IWDG_REFRESH_PERIOD_SECONDS) : (remaining_delay);
-		remaining_delay -= sub_delay;
-		// Start wake-up timer.
-		RTC_StartWakeUpTimer(sub_delay);
-		PWR_EnterStopMode();
-		// Wake-up: clear watchdog and flags.
-		IWDG_Reload();
-		RTC_ClearWakeUpTimerFlag();
+	// Manage call count.
+	rf_api_wait_frame_calls_count++;
+	if (rf_api_wait_frame_calls_count < RF_API_WAIT_FRAME_CALLS_MAX) {
+		// Got to ready state.
+		S2LP_SendCommand(S2LP_CMD_READY);
+		S2LP_WaitForStateSwitch(S2LP_STATE_READY);
+		S2LP_SendCommand(S2LP_CMD_FLUSHRXFIFO);
+		// Turn LED on.
+		LED_SetColor(LED_COLOR_BLUE);
+		// Start radio.
+		S2LP_SendCommand(S2LP_CMD_RX);
+		// Enable external GPIO.
 		EXTI_ClearAllFlags();
+		NVIC_EnableInterrupt(IT_EXTI_4_15);
+		// Clear watchdog.
+		IWDG_Reload();
+		// Enter stop mode until GPIO interrupt or RTC wake-up.
+		unsigned int remaining_delay = RF_API_DOWNLINK_TIMEOUT_SECONDS;
+		unsigned int sub_delay = 0;
+		while ((remaining_delay > 0) && (S2LP_GetIrqFlag(S2LP_IRQ_RX_DATA_READY_IDX) == 0)) {
+			// Compute sub-delay.
+			sub_delay = (remaining_delay > IWDG_REFRESH_PERIOD_SECONDS) ? (IWDG_REFRESH_PERIOD_SECONDS) : (remaining_delay);
+			remaining_delay -= sub_delay;
+			// Start wake-up timer.
+			RTC_StartWakeUpTimer(sub_delay);
+			PWR_EnterStopMode();
+			// Wake-up: clear watchdog and flags.
+			IWDG_Reload();
+			RTC_ClearWakeUpTimerFlag();
+			EXTI_ClearAllFlags();
+		}
+		// Wake-up: disable interrupts.
+		RTC_StopWakeUpTimer();
+		NVIC_DisableInterrupt(IT_EXTI_4_15);
+		// Check flag.
+		if (S2LP_GetIrqFlag(S2LP_IRQ_RX_DATA_READY_IDX) != 0) {
+			// Downlink frame received.
+			(*state) = DL_PASSED;
+			sfx_err = SFX_ERR_NONE;
+			S2LP_ReadFifo(frame, RF_API_DOWNLINK_FRAME_LENGTH_BYTES);
+		}
+		// Stop radio.
+		S2LP_SendCommand(S2LP_CMD_SABORT);
+		S2LP_WaitForStateSwitch(S2LP_STATE_READY);
+		S2LP_SendCommand(S2LP_CMD_FLUSHRXFIFO);
+		S2LP_SendCommand(S2LP_CMD_STANDBY);
+		S2LP_WaitForStateSwitch(S2LP_STATE_STANDBY);
+		// Turn LED off.
+		LED_SetColor(LED_OFF);
 	}
-	// Wake-up: disable interrupts.
-	RTC_StopWakeUpTimer();
-	NVIC_DisableInterrupt(IT_EXTI_4_15);
-	// Check GPIO.
-	if (GPIO_Read(&GPIO_S2LP_GPIO0) == 0) {
-		// Downlink frame received.
-		(*state) = DL_PASSED;
-		sfx_err = SFX_ERR_NONE;
-		S2LP_ReadFifo(frame, RF_API_DOWNLINK_FRAME_LENGTH_BYTES);
-	}
-	// Stop radio.
-	S2LP_SendCommand(S2LP_CMD_SABORT);
-	S2LP_WaitForStateSwitch(S2LP_STATE_READY);
-	S2LP_SendCommand(S2LP_CMD_FLUSHRXFIFO);
-	S2LP_SendCommand(S2LP_CMD_STANDBY);
-	S2LP_WaitForStateSwitch(S2LP_STATE_STANDBY);
-	// Turn LED off.
-	LED_SetColor(LED_OFF);
 	// Return.
 	return sfx_err;
 }
