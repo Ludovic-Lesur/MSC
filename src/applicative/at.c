@@ -697,7 +697,7 @@ static void AT_DecodeRxBuffer(void) {
 					}
 					SIGFOX_API_close();
 					if (sfx_error == SFX_ERR_NONE) {
-						if (downlink_request == 1) {
+						if (downlink_request != 0) {
 							AT_PrintDownlinkData(sfx_downlink_data);
 						}
 						AT_ReplyOk();
@@ -768,7 +768,7 @@ static void AT_DecodeRxBuffer(void) {
 					}
 					SIGFOX_API_close();
 					if (sfx_error == SFX_ERR_NONE) {
-						if (downlink_request == 1) {
+						if (downlink_request != 0) {
 							AT_PrintDownlinkData(sfx_downlink_data);
 						}
 						AT_ReplyOk();

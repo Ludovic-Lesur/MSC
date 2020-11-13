@@ -324,37 +324,16 @@ void S2LP_ConfigureIrq(S2LP_IrqIndex irq_idx, unsigned irq_enable) {
 	S2LP_WriteRegister((S2LP_REG_IRQ_MASK0 - reg_addr_offset), reg_value);
 }
 
-/* READ S2LP IRQ FLAG.
- * @param irq_idx:		Interrupt index (use enumeration defined in s2lp.h).
- * @return:				Flag value (0/1).
+/* CLEAR S2LP IRQ FLAGS.
+ * @param:	None.
+ * @return:	None.
  */
-unsigned char S2LP_GetIrqFlag(S2LP_IrqIndex irq_idx) {
-	// Get register and bit offsets.
-	unsigned char reg_addr_offset = (irq_idx / 8);
-	unsigned char irq_bit_offset = (irq_idx % 8);
-	// Read register.
-	unsigned char reg_value = 0;
-	S2LP_ReadRegister((S2LP_REG_IRQ_STATUS0 - reg_addr_offset), &reg_value);
-	// Return bit.
-	return ((reg_value & (0b1 << irq_bit_offset)) >> irq_bit_offset);
-}
-
-/* READ S2LP IRQ FLAGS.
- * @param:				None.
- * @return irq_flags:	Interrupts flags as 32-bits value.
- */
-unsigned int S2LP_GetIrqFlags(void) {
-	unsigned int irq_flags = 0;
+void S2LP_ClearIrqFlags(void) {
 	unsigned char reg_value = 0;
 	S2LP_ReadRegister(S2LP_REG_IRQ_STATUS3,  &reg_value);
-	irq_flags |= (reg_value << 24);
 	S2LP_ReadRegister(S2LP_REG_IRQ_STATUS2,  &reg_value);
-	irq_flags |= (reg_value << 16);
 	S2LP_ReadRegister(S2LP_REG_IRQ_STATUS1,  &reg_value);
-	irq_flags |= (reg_value << 8);
 	S2LP_ReadRegister(S2LP_REG_IRQ_STATUS0,  &reg_value);
-	irq_flags |= (reg_value << 0);
-	return irq_flags;
 }
 
 /* SET PACKET LENGTH.
@@ -528,12 +507,12 @@ void S2LP_DisableEquaCsAntSwitch(void) {
 
 /* GET CURRENT RSSI LEVEL.
  * @param:		None.
- * return rssi:	Current RSSI level in dBm (at sync).
+ * return rssi:	RSSI level captured at the end of the sync word detection (in dBm).
  */
-signed char S2LP_GetRssi(void) {
+signed int S2LP_GetRssi(void) {
 	unsigned char rssi_level_reg_value = 0;
 	S2LP_ReadRegister(S2LP_REG_RSSI_LEVEL, &rssi_level_reg_value);
-	signed char rssi = rssi_level_reg_value - S2LP_RSSI_OFFSET_DB;
+	signed int rssi = rssi_level_reg_value - S2LP_RSSI_OFFSET_DB;
 	return rssi;
 }
 

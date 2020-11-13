@@ -158,7 +158,7 @@ typedef struct {
 #define S2LP_DATARATE_600BPS	((S2LP_MantissaExponent) {39322, 1}) // Setting for downlink 600bps and fXO=49.152MHz.
 
 // RX bandwidths.
-#define S2LP_RXBW_1KHZ			((S2LP_MantissaExponent) {8, 9})
+#define S2LP_RXBW_3KHZ			((S2LP_MantissaExponent) {3, 8})
 
 // Preamble patterns.
 typedef enum {
@@ -187,8 +187,7 @@ void S2LP_SetBitRate(S2LP_MantissaExponent bit_rate_setting);
 void S2LP_ConfigureGpio(unsigned char gpio_number, S2LP_GPIO_Mode gpio_mode, unsigned char gpio_function, unsigned char fifo_flag_direction);
 void S2LP_SetFifoThreshold(S2LP_FifoThreshold fifo_threshold, unsigned char threshold_value);
 void S2LP_ConfigureIrq(S2LP_IrqIndex irq_idx, unsigned irq_enable);
-unsigned char S2LP_GetIrqFlag(S2LP_IrqIndex irq_idx);
-unsigned int S2LP_GetIrqFlags(void);
+void S2LP_ClearIrqFlags(void);
 
 // Packet functions.
 void S2LP_SetPacketlength(unsigned char packet_length_bytes);
@@ -205,7 +204,7 @@ void S2LP_WriteFifo(unsigned char* tx_data, unsigned char tx_data_length_bytes);
 void S2LP_SetRxSource(S2LP_RxSource rx_source);
 void S2LP_SetRxBandwidth(S2LP_MantissaExponent rxbw_setting);
 void S2LP_DisableEquaCsAntSwitch(void);
-signed char S2LP_GetRssi(void);
+signed int S2LP_GetRssi(void);
 void S2LP_ReadFifo(unsigned char* rx_data, unsigned char rx_data_length_bytes);
 
 #endif /* S2LP_H */
