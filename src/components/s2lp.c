@@ -161,15 +161,10 @@ void S2LP_SetOscillator(S2LP_Oscillator s2lp_oscillator) {
  * @param:	None.
  * @return:	None.
  */
-void S2LP_ConfigureSmps(void) {
-	// Enable internal SMPS.
-	unsigned char reg_value = 0;
-	S2LP_ReadRegister(S2LP_REG_PM_CONF4, &reg_value);
-	reg_value &= 0xDF;
-	S2LP_WriteRegister(S2LP_REG_PM_CONF4, reg_value);
+void S2LP_ConfigureSmps(S2LP_SmpsSetting smps_setting) {
 	// Configure divider and switching frequency.
-	S2LP_WriteRegister(S2LP_REG_PM_CONF3, 0x9B);
-	S2LP_WriteRegister(S2LP_REG_PM_CONF2, 0xF4);
+	S2LP_WriteRegister(S2LP_REG_PM_CONF3, smps_setting.s2lp_smps_reg_pm_conf3);
+	S2LP_WriteRegister(S2LP_REG_PM_CONF2, smps_setting.s2lp_smps_reg_pm_conf2);
 }
 
 /* CONFIGURE PLL CHARGE-PUMP.

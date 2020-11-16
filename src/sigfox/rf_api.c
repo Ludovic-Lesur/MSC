@@ -101,7 +101,6 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 	S2LP_SendCommand(S2LP_CMD_STANDBY);
 	S2LP_WaitForStateSwitch(S2LP_STATE_STANDBY);
 	S2LP_SetOscillator(S2LP_OSCILLATOR_TCXO);
-	S2LP_ConfigureSmps();
 	S2LP_ConfigureChargePump();
 	// Dedicated configurations.
 	switch (rf_mode) {
@@ -110,6 +109,7 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 		GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_DOWN);
 		EXTI_ConfigureGpio(&GPIO_S2LP_GPIO0, EXTI_TRIGGER_RISING_EDGE);
 		// Uplink.
+		S2LP_ConfigureSmps(S2LP_SMPS_TX);
 		S2LP_ConfigurePa();
 		S2LP_SetModulation(S2LP_MODULATION_POLAR);
 		S2LP_SetTxSource(S2LP_TX_SOURCE_FIFO);
@@ -125,10 +125,11 @@ sfx_u8 RF_API_init(sfx_rf_mode_t rf_mode) {
 		GPIO_Configure(&GPIO_S2LP_GPIO0, GPIO_MODE_INPUT, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_UP);
 		EXTI_ConfigureGpio(&GPIO_S2LP_GPIO0, EXTI_TRIGGER_FALLING_EDGE);
 		// Downlink.
+		S2LP_ConfigureSmps(S2LP_SMPS_RX);
 		S2LP_SetModulation(S2LP_MODULATION_2GFSK_BT1);
 		S2LP_SetFskDeviation(RF_API_DOWNLINK_DEVIATION);
 		S2LP_SetBitRate(RF_API_DOWNLINK_DATARATE);
-		S2LP_SetRxBandwidth(S2LP_RXBW_3KHZ);
+		S2LP_SetRxBandwidth(S2LP_RXBW_2KHZ1);
 		S2LP_ConfigureGpio(0, S2LP_GPIO_MODE_OUT_LOW_POWER, S2LP_GPIO_OUTPUT_FUNCTION_NIRQ, 1);
 		S2LP_ConfigureIrq(S2LP_IRQ_RX_DATA_READY_IDX, 1);
 		// Downlink packet structure.

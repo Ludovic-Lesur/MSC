@@ -401,13 +401,14 @@ sfx_u8 MCU_API_report_test_result(sfx_bool status, sfx_s16 rssi) {
 #ifdef ATM
 	// Print test result on UART.
 	if (status == SFX_TRUE) {
-		USART2_SendString("Test passed. RSSI = -");
+		USART2_SendString("Test passed. RSSI=-");
 		USART2_SendValue(((unsigned int) ((-1) * rssi)), USART_FORMAT_DECIMAL, 0);
+		USART2_SendString("dBm");
 	}
 	else {
 		USART2_SendString("Test failed. ");
 	}
-	USART2_SendString("\n");
+	USART2_SendString("\r\n");
 #endif
 	return SFX_ERR_NONE;
 }

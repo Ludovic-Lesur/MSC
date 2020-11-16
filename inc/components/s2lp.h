@@ -28,7 +28,7 @@ typedef enum {
 	S2LP_STATE_TX = 0x5C
 } S2LP_State;
 
-// oscillator.
+// Oscillator.
 typedef enum {
 	S2LP_OSCILLATOR_QUARTZ = 0x00,
 	S2LP_OSCILLATOR_TCXO
@@ -158,7 +158,7 @@ typedef struct {
 #define S2LP_DATARATE_600BPS	((S2LP_MantissaExponent) {39322, 1}) // Setting for downlink 600bps and fXO=49.152MHz.
 
 // RX bandwidths.
-#define S2LP_RXBW_3KHZ			((S2LP_MantissaExponent) {3, 8})
+#define S2LP_RXBW_2KHZ1			((S2LP_MantissaExponent) {8, 8})
 
 // Preamble patterns.
 typedef enum {
@@ -167,6 +167,16 @@ typedef enum {
 	S2LP_PREAMBLE_PATTERN_1100,
 	S2LP_PREAMBLE_PATTERN_0011
 } S2LP_PreamblePattern;
+
+// SMPS setting.
+typedef struct {
+	unsigned char s2lp_smps_reg_pm_conf3;
+	unsigned char s2lp_smps_reg_pm_conf2;
+} S2LP_SmpsSetting;
+
+// SMPS frequencies.
+#define S2LP_SMPS_TX			((S2LP_SmpsSetting) {0x9C, 0x28})
+#define S2LP_SMPS_RX			((S2LP_SmpsSetting) {0x87, 0xFC})
 
 /*** S2LP functions ***/
 
@@ -178,7 +188,7 @@ void S2LP_SendCommand(S2LP_Command command);
 void S2LP_WaitForStateSwitch(S2LP_State new_state);
 void S2LP_WaitForXo(void);
 void S2LP_SetOscillator(S2LP_Oscillator s2lp_oscillator);
-void S2LP_ConfigureSmps(void);
+void S2LP_ConfigureSmps(S2LP_SmpsSetting smps_setting);
 void S2LP_ConfigureChargePump(void);
 void S2LP_SetModulation(S2LP_Modulation modulation);
 void S2LP_SetRfFrequency(unsigned int rf_frequency_hz);
