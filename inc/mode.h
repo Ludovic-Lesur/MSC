@@ -8,7 +8,7 @@
 #ifndef MODE_H
 #define MODE_H
 
-/*** Tracker mode ***/
+/*** Charger mode ***/
 
 //#define ATM 		// AT command mode.
 #define NM 			// Nominal mode.
