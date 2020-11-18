@@ -1,7 +1,7 @@
 /*
  * s2lp.c
  *
- *  Created on: 12 oct. 2019
+ *  Created on: 16 aug. 2019
  *      Author: Ludo
  */
 
@@ -300,6 +300,7 @@ void S2LP_SetFifoThreshold(S2LP_FifoThreshold fifo_threshold, unsigned char thre
 	// Write register.
 	S2LP_WriteRegister(fifo_threshold, threshold_value);
 }
+
 /* CONFIGURE S2LP INTERRUPT.
  * @param irq_idx:		Interrupt index (use enumeration defined in s2lp.h).
  * @param irq_enable:	Enable (1) or disable (0) interrupt.
@@ -464,6 +465,7 @@ void S2LP_WriteFifo(unsigned char* tx_data, unsigned char tx_data_length_bytes) 
 
 /* SET S2LP RX SOURCE.
  * @param rx_source:	RX data source (use enumeration defined in s2lp.h).
+ * @return:				None.
  */
 void S2LP_SetRxSource(S2LP_RxSource rx_source) {
 	// Read register.

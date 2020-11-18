@@ -546,7 +546,7 @@ static void AT_DecodeRxBuffer(void) {
 			else {
 				USART2_SendValue(mcu_temperature_degrees, USART_FORMAT_DECIMAL, 0);
 			}
-			USART2_SendString("dC\n");
+			USART2_SendString("dC\r\n");
 		}
 #endif
 #ifdef AT_COMMANDS_NVM
@@ -570,7 +570,7 @@ static void AT_DecodeRxBuffer(void) {
 					NVM_Disable();
 					// Print byte.
 					USART2_SendValue(nvm_byte, USART_FORMAT_HEXADECIMAL, 1);
-					USART2_SendString("\n");
+					USART2_SendString("\r\n");
 				}
 				else {
 					AT_ReplyError(AT_ERROR_SOURCE_AT, AT_OUT_ERROR_NVM_ADDRESS_OVERFLOW);
@@ -591,7 +591,7 @@ static void AT_DecodeRxBuffer(void) {
 				NVM_ReadByte((NVM_SIGFOX_ID_ADDRESS_OFFSET + ID_LENGTH - byte_idx - 1), &id_byte);
 				USART2_SendValue(id_byte, USART_FORMAT_HEXADECIMAL, (byte_idx==0 ? 1 : 0));
 			}
-			USART2_SendString("\n");
+			USART2_SendString("\r\n");
 			// Disable NVM interface.
 			NVM_Disable();
 		}
@@ -632,7 +632,7 @@ static void AT_DecodeRxBuffer(void) {
 				NVM_ReadByte((NVM_SIGFOX_KEY_ADDRESS_OFFSET + byte_idx), &id_byte);
 				USART2_SendValue(id_byte, USART_FORMAT_HEXADECIMAL, (byte_idx==0 ? 1 : 0));
 			}
-			USART2_SendString("\n");
+			USART2_SendString("\r\n");
 			// Disable NVM interface.
 			NVM_Disable();
 		}
@@ -864,7 +864,7 @@ static void AT_DecodeRxBuffer(void) {
 		}
 #endif
 #ifdef AT_COMMANDS_TEST_MODES
-		/* Sigfox test mode command AT$TM=<rc>,<test_mode><CR> */
+		// Sigfox test mode command AT$TM=<rc>,<test_mode><CR>.
 		else if (AT_CompareHeader(AT_IN_HEADER_TM) == AT_NO_ERROR) {
 			unsigned int rc = 0;
 			// Search RC parameter.
