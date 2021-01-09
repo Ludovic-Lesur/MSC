@@ -34,9 +34,6 @@ void RCC_Init(void) {
 	RCC -> CFGR &= ~(0b111 << 11); // PCLK2 = HCLK = 16MHz (PPRE2='000').
 	// Peripherals clock source.
 	RCC -> CCIPR &= 0xFFF0C3F0; // All peripherals clocked via the corresponding APBx line.
-	// Unlock back-up registers.
-	RCC -> APB1ENR |= (0b1 << 28); // PWREN='1'.
-	PWR -> CR |= (0b1 << 8); // Set DBP bit to unlock back-up registers write protection.
 }
 
 /* CONTROL EXTERNAL TCXO.

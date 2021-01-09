@@ -96,7 +96,7 @@ void S2LP_ExitShutdown(void) {
 	GPIO_Configure(&GPIO_S2LP_SDN, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_Write(&GPIO_S2LP_SDN, 0);
 	// Wait for reset time.
-	LPTIM1_DelayMilliseconds(100);
+	LPTIM1_DelayMilliseconds(100, 1);
 }
 
 /* SEND COMMAND TO S2LP.
@@ -450,7 +450,7 @@ void S2LP_WriteFifo(unsigned char* tx_data, unsigned char tx_data_length_bytes) 
 	// Transfer buffer with DMA.
 	DMA1_StartChannel3();
 	while (DMA1_GetChannel3Status() == 0) {
-		PWR_EnterLowPowerSleepMode();
+		PWR_EnterSleepMode();
 	}
 	DMA1_StopChannel3();
 #else

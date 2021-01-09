@@ -155,11 +155,11 @@ static void ADC1_ComputeMcuVoltage(void) {
  * @return:	None.
  */
 static void ADC1_ComputeMcuTemperature(void) {
-	// Set sampling time (see p.89 of STM32L031x4/6 datasheet).
+	// Set sampling time (see p.88 of STM32L031x4/6 datasheet).
 	ADC1 -> SMPR |= (0b111 << 0); // Sampling time for temperature sensor must be greater than 10us, 160.5*(1/ADCCLK) = 20us for ADCCLK = SYSCLK/2 = 8MHz;
-	// Wake-up temperature sensor.
-	ADC1 -> CCR |= (0b1 << 23); // TSEN='1'.
-	LPTIM1_DelayMilliseconds(1); // Wait at least 10µs (see p.89 of STM32L031x4/6 datasheet).
+	// Wake-up VREFINT and temperature sensor.
+	ADC1 -> CCR |= (0b11 << 22); // TSEN='1' and VREFEF='1'.
+	LPTIM1_DelayMilliseconds(10, 0); // Wait internal reference stabilization (max 3ms).
 	// Read raw temperature.
 	int raw_temp_sensor_12bits = 0;
 	ADC1_FilteredConversion(ADC_CHANNEL_TEMPERATURE_SENSOR, &raw_temp_sensor_12bits);
@@ -210,7 +210,7 @@ void ADC1_Init(void) {
 	}
 	// Enable ADC voltage regulator.
 	ADC1 -> CR |= (0b1 << 28);
-	LPTIM1_DelayMilliseconds(5);
+	LPTIM1_DelayMilliseconds(5, 0);
 	// ADC configuration.
 	ADC1 -> CFGR2 &= ~(0b11 << 30); // Reset bits 30-31.
 	ADC1 -> CFGR2 |= (0b01 << 30); // Use (PCLK2/2) as ADCCLK = SYSCLK/2 (see RCC_Init() function).

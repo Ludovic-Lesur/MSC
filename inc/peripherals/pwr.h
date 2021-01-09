@@ -10,8 +10,8 @@
 
 /*** PWR functions ***/
 
-void PWR_EnterLowPowerSleepMode(void);
+void PWR_Init(void);
+void PWR_EnterSleepMode(void);
 void PWR_EnterStopMode(void);
-void PWR_EnterStandbyMode(void);
 
 #endif /* PWR_H */

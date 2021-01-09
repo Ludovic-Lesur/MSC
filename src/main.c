@@ -132,8 +132,9 @@ int main (void) {
 	// Init GPIOs.
 	GPIO_Init();
 	EXTI_Init();
-	// Init clock.
+	// Init clock and power modules.
 	RCC_Init();
+	PWR_Init();
 	RCC_SwitchToHsi();
 	// Reset RTC before starting oscillators.
 	RTC_Reset();
@@ -159,7 +160,7 @@ int main (void) {
 	// Start-up CW and delay to check energy availability (fixing sequence number corruption issue).
 	LED_SetColor(LED_COLOR_WHITE);
 	SIGFOX_API_start_continuous_transmission(867000000, SFX_NO_MODULATION);
-	LPTIM1_DelayMilliseconds(MSC_STARTUP_DELAY_MS);
+	LPTIM1_DelayMilliseconds(MSC_STARTUP_DELAY_MS, 1);
 	SIGFOX_API_stop_continuous_transmission();
 	LED_SetColor(LED_OFF);
 	// Perform state machine.
