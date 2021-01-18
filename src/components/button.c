@@ -31,7 +31,7 @@ void BUTTON_Init(void) {
  */
 void BUTTON_EnableInterrupt(void) {
 	// Enable interrupt.
-	NVIC_EnableInterrupt(IT_EXTI_0_1);
+	NVIC_EnableInterrupt(NVIC_IT_EXTI_0_1);
 }
 
 /* DISABLE BUTTON INTERRUPT.
@@ -40,7 +40,7 @@ void BUTTON_EnableInterrupt(void) {
  */
 void BUTTON_DisableInterrupt(void) {
 	// Disable interrupt.
-	NVIC_DisableInterrupt(IT_EXTI_0_1);
+	NVIC_DisableInterrupt(NVIC_IT_EXTI_0_1);
 }
 
 /* READ BUTTON STATE.

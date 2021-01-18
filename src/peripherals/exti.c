@@ -67,6 +67,9 @@ void EXTI_Init(void) {
 	EXTI -> IMR = 0;
 	// Clear all flags.
 	EXTI -> PR |= 0x007BFFFF; // PIFx='1'.
+	// Set interrupts priority.
+	NVIC_SetPriority(NVIC_IT_EXTI_0_1, 3);
+	NVIC_SetPriority(NVIC_IT_EXTI_4_15, 0);
 }
 
 /* CONFIGURE A GPIO AS EXTERNAL INTERRUPT SOURCE.

@@ -933,7 +933,7 @@ void AT_Init(void) {
 	at_ctx.end_idx = 0;
 	at_ctx.separator_idx = 0;
 	// Enable USART interrupt.
-	NVIC_EnableInterrupt(IT_USART2);
+	NVIC_EnableInterrupt(NVIC_IT_USART2);
 }
 
 /* MAIN TASK OF AT COMMAND MANAGER.

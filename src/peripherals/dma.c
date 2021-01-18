@@ -55,6 +55,8 @@ void DMA1_InitChannel3(void) {
 	DMA1 -> CSELR |= (0b0001 << 8); // DMA channel mapped on SPI1_TX (C3S='0001').
 	// Clear all flags.
 	DMA1 -> IFCR |= 0x00000F00;
+	// Set interrupt priority.
+	NVIC_SetPriority(NVIC_IT_DMA1_CH_2_3, 1);
 }
 
 /* START DMA1 CHANNEL 3 TRANSFER.
@@ -65,7 +67,7 @@ void DMA1_StartChannel3(void) {
 	// Clear all flags.
 	dma1_channel3_tcif = 0;
 	DMA1 -> IFCR |= 0x00000F00;
-	NVIC_EnableInterrupt(IT_DMA1_Channel2_3);
+	NVIC_EnableInterrupt(NVIC_IT_DMA1_CH_2_3);
 	// Start transfer.
 	DMA1 -> CCR3 |= (0b1 << 0); // EN='1'.
 }
@@ -78,7 +80,7 @@ void DMA1_StopChannel3(void) {
 	// Stop transfer.
 	dma1_channel3_tcif = 0;
 	DMA1 -> CCR3 &= ~(0b1 << 0); // EN='0'.
-	NVIC_DisableInterrupt(IT_DMA1_Channel2_3);
+	NVIC_DisableInterrupt(NVIC_IT_DMA1_CH_2_3);
 }
 
 /* SET DMA1 CHANNEL 3 SOURCE BUFFER ADDRESS.
@@ -109,7 +111,7 @@ unsigned char DMA1_GetChannel3Status(void) {
  */
 void DMA1_Disable(void) {
 	// Disable interrupts.
-	NVIC_DisableInterrupt(IT_DMA1_Channel4_7);
+	NVIC_DisableInterrupt(NVIC_IT_DMA1_CH_2_3);
 	// Clear all flags.
 	DMA1 -> IFCR |= 0x0FFFFFFF;
 	// Disable peripheral clock.

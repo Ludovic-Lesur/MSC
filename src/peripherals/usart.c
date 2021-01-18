@@ -179,7 +179,7 @@ void USART2_Init(void) {
  */
 void USART2_SendValue(unsigned int tx_value, USART_Format format, unsigned char print_prefix) {
 	// Disable interrupt.
-	NVIC_DisableInterrupt(IT_USART2);
+	NVIC_DisableInterrupt(NVIC_IT_USART2);
 	// Local variables.
 	unsigned char first_non_zero_found = 0;
 	unsigned int idx;
@@ -260,7 +260,7 @@ void USART2_SendValue(unsigned int tx_value, USART_Format format, unsigned char 
 #ifdef USE_TXE_INTERRUPT
 	USART2 -> CR1 |= (0b1 << 7); // (TXEIE = '1').
 #endif
-	NVIC_EnableInterrupt(IT_USART2);
+	NVIC_EnableInterrupt(NVIC_IT_USART2);
 }
 
 /* SEND A BYTE ARRAY THROUGH USART2.
@@ -269,7 +269,7 @@ void USART2_SendValue(unsigned int tx_value, USART_Format format, unsigned char 
  */
 void USART2_SendString(char* tx_string) {
 	// Disable interrupt.
-	NVIC_DisableInterrupt(IT_USART2);
+	NVIC_DisableInterrupt(NVIC_IT_USART2);
 	// Fill TX buffer with new bytes.
 	while (*tx_string) {
 		USART2_FillTxBuffer((unsigned char) *(tx_string++));
@@ -278,6 +278,6 @@ void USART2_SendString(char* tx_string) {
 	#ifdef USE_TXE_INTERRUPT
 		USART2 -> CR1 |= (0b1 << 7); // (TXEIE = '1').
 	#endif
-	NVIC_EnableInterrupt(IT_USART2);
+	NVIC_EnableInterrupt(NVIC_IT_USART2);
 }
 #endif

@@ -200,6 +200,8 @@ void TIM21_Init(unsigned int led_blink_period_ms) {
 	TIM21 -> EGR |= (0b1 << 0); // UG='1'.
 	// Enable interrupt.
 	TIM21 -> DIER |= (0b1 << 0);
+	// Set interrupt priority.
+	NVIC_SetPriority(NVIC_IT_TIM21, 0);
 	// Disable peripheral by default.
 	RCC -> APB2ENR &= ~(0b1 << 2); // TIM21EN='0'.
 }
@@ -235,7 +237,7 @@ void TIM21_Start(unsigned char single_blink) {
 	// Clear flag and enable interrupt.
 	TIM21 -> CNT &= 0xFFFF0000;
 	TIM21 -> SR &= ~(0b1 << 0); // Clear flag (UIF='0').
-	NVIC_EnableInterrupt(IT_TIM21);
+	NVIC_EnableInterrupt(NVIC_IT_TIM21);
 	// Enable TIM21 peripheral.
 	TIM21 -> CR1 |= (0b1 << 0); // Enable TIM21 (CEN='1').
 }
@@ -246,7 +248,7 @@ void TIM21_Start(unsigned char single_blink) {
  */
 void TIM21_Stop(void) {
 	// Disable interrupt.
-	NVIC_DisableInterrupt(IT_TIM21);
+	NVIC_DisableInterrupt(NVIC_IT_TIM21);
 	// Stop TIM21.
 	TIM21 -> CR1 &= ~(0b1 << 0); // CEN='0'.
 }

@@ -119,8 +119,10 @@ void RTC_Init(void) {
 	RTC -> CR |= (0b100 << 0); // Wake-up timer clocked by RTC clock (1Hz).
 	RTC -> CR |= (0b1 << 14); // Enable wake-up timer interrupt.
 	RTC_ExitInitializationMode();
-	// Enable RTC alarm interrupt (line 17).
+	// Enable wake-up timer interrupt.
 	EXTI_ConfigureLine(EXTI_LINE_RTC_WAKEUP_TIMER, EXTI_TRIGGER_RISING_EDGE);
+	// Set interrupt priority.
+	NVIC_SetPriority(NVIC_IT_RTC, 2);
 }
 
 /* START RTC WAKE-UP TIMER.
@@ -147,7 +149,7 @@ void RTC_StartWakeUpTimer(unsigned int delay_seconds) {
 		RTC -> CR |= (0b1 << 10); // Enable wake-up timer.
 		RTC_ExitInitializationMode();
 		// Enable interrupt.
-		NVIC_EnableInterrupt(IT_RTC);
+		NVIC_EnableInterrupt(NVIC_IT_RTC);
 	}
 }
 
@@ -161,7 +163,7 @@ void RTC_StopWakeUpTimer(void) {
 	RTC -> CR &= ~(0b1 << 10); // Disable wake-up timer.
 	RTC_ExitInitializationMode();
 	// Disable interrupt.
-	NVIC_DisableInterrupt(IT_RTC);
+	NVIC_DisableInterrupt(NVIC_IT_RTC);
 }
 
 /* RETURN THE CURRENT ALARM INTERRUPT STATUS.
