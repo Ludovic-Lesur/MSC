@@ -103,7 +103,7 @@ static MSC_Context msc_ctx;
  * @param:	None.
  * @return:	None.
  */
-void MSC_UpdateLedColor(void) {
+static void MSC_UpdateLedColor(void) {
 	// Default is maximum.
 	msc_ctx.msc_led_color = msc_current_threshold_led_color[MSC_NUMBER_OF_CURRENT_THRESHOLDS];
 	// Check thresholds.
@@ -128,7 +128,6 @@ int main (void) {
 	IWDG_Init();
 	// Init memory.
 	NVIC_Init();
-	NVM_Enable();
 	// Init GPIOs.
 	GPIO_Init();
 	EXTI_Init();
@@ -272,7 +271,6 @@ int main (void) {
 	IWDG_Init();
 	// Init memory.
 	NVIC_Init();
-	NVM_Enable();
 	// Init GPIOs.
 	GPIO_Init();
 	EXTI_Init();

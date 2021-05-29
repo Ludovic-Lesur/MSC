@@ -180,7 +180,9 @@ sfx_u8 MCU_API_aes_128_cbc_encrypt(sfx_u8* encrypted_data, sfx_u8* data_to_encry
 		case CREDENTIALS_PRIVATE_KEY:
 			// Retrieve device key from NVM.
 			for (byte_idx=0 ; byte_idx<AES_BLOCK_SIZE ; byte_idx++) {
+				NVM_Enable();
 				NVM_ReadByte(NVM_SIGFOX_KEY_ADDRESS_OFFSET+byte_idx, &key_byte);
+				NVM_Disable();
 				local_key[byte_idx] = key_byte;
 			}
 			break;
@@ -444,7 +446,9 @@ sfx_u8 MCU_API_get_device_id_and_payload_encryption_flag(sfx_u8 dev_id[ID_LENGTH
 	// Get device ID.
 	unsigned char byte_idx = 0;
 	for (byte_idx=0 ; byte_idx<ID_LENGTH ; byte_idx++) {
+		NVM_Enable();
 		NVM_ReadByte(NVM_SIGFOX_ID_ADDRESS_OFFSET+byte_idx, &(dev_id[byte_idx]));
+		NVM_Disable();
 	}
 	// No payload encryption.
 	(*payload_encryption_enabled) = SFX_FALSE;
